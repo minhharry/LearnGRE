@@ -94,14 +94,31 @@
     flex-direction: column;
   }
 
-  .brand-tag,
-  .mode-switcher {
+  .sidebar-backdrop {
+    inset: 48px 0 0 0;
+  }
+
+  .sidebar {
+    width: 85vw;
+    max-width: 320px;
+  }
+
+  .brand-tag {
+    display: none;
+  }
+
+  /* Hide desktop-only controls like keyboard cheatsheet button on mobile */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Keep mode-switcher displayed inside sidebar drawer on mobile */
+  .top-bar .mode-switcher {
     display: none;
   }
 
   .top-bar-center {
-    flex: 1;
-    justify-content: flex-end;
+    display: none;
   }
 
   /* Sleek, space-efficient single-row session header on mobile */

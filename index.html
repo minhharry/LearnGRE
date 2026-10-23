@@ -40,14 +40,6 @@
         </div>
       </div>
 
-      <div class="top-bar-center">
-        <!-- Mode Switcher Pill -->
-        <div class="mode-switcher" role="radiogroup" aria-label="Chế độ học">
-          <button id="mode-guided-btn" class="mode-btn active" role="radio" aria-checked="true">Lộ trình Chuẩn</button>
-          <button id="mode-cram-btn" class="mode-btn" role="radio" aria-checked="false">Cấp tốc (Cram)</button>
-        </div>
-      </div>
-
       <div class="top-bar-right">
         <!-- Daily Streak Chip -->
         <div class="streak-chip" id="topbar-streak" title="Chuỗi ngày học liên tục">
@@ -63,33 +55,6 @@
           aria-label="Đổi giao diện">
           <svg class="svg-icon" viewBox="0 0 24 24">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-          </svg>
-        </button>
-
-        <!-- Shortcuts Cheatsheet Button -->
-        <button id="topbar-shortcuts-btn" class="icon-btn" title="Phím tắt điều hướng (bấm ?)"
-          aria-label="Phím tắt điều hướng">
-          <svg class="svg-icon" viewBox="0 0 24 24">
-            <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
-            <line x1="6" y1="8" x2="6.01" y2="8" />
-            <line x1="10" y1="8" x2="10.01" y2="8" />
-            <line x1="14" y1="8" x2="14.01" y2="8" />
-            <line x1="18" y1="8" x2="18.01" y2="8" />
-            <line x1="6" y1="12" x2="6.01" y2="12" />
-            <line x1="10" y1="12" x2="10.01" y2="12" />
-            <line x1="14" y1="12" x2="14.01" y2="12" />
-            <line x1="18" y1="12" x2="18.01" y2="12" />
-            <line x1="7" y1="16" x2="17" y2="16" />
-          </svg>
-          <span class="keycap" style="min-width: 18px; height: 18px; font-size: 10px;">?</span>
-        </button>
-
-        <!-- Backup / Data Persistence Button -->
-        <button id="topbar-backup-btn" class="icon-btn" title="Quản lý sao lưu dữ liệu" aria-label="Sao lưu dữ liệu">
-          <svg class="svg-icon" viewBox="0 0 24 24">
-            <ellipse cx="12" cy="5" rx="9" ry="3" />
-            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
           </svg>
         </button>
       </div>
@@ -141,9 +106,48 @@
           </div>
         </nav>
 
+        <!-- Mode Switcher Pill in Sidebar -->
+        <div class="sidebar-mode-section">
+          <div class="sidebar-section-label">Chế độ học tập</div>
+          <div class="mode-switcher" role="radiogroup" aria-label="Chế độ học">
+            <button id="mode-guided-btn" class="mode-btn active" role="radio" aria-checked="true">Lộ trình Chuẩn</button>
+            <button id="mode-cram-btn" class="mode-btn" role="radio" aria-checked="false">Cấp tốc (Cram)</button>
+          </div>
+        </div>
+
         <!-- 32 Groups Scrollable Container -->
         <div id="groups-list-container" class="groups-list-container">
           <!-- Dynamically populated by js/ui.js -->
+        </div>
+
+        <!-- Sidebar Footer with Keyboard Cheatsheet & Backup Buttons -->
+        <div class="sidebar-footer">
+          <button id="sidebar-shortcuts-btn" class="sidebar-footer-btn desktop-only" title="Phím tắt điều hướng (bấm ?)"
+            aria-label="Phím tắt điều hướng">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+              <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+              <line x1="6" y1="8" x2="6.01" y2="8" />
+              <line x1="10" y1="8" x2="10.01" y2="8" />
+              <line x1="14" y1="8" x2="14.01" y2="8" />
+              <line x1="18" y1="8" x2="18.01" y2="8" />
+              <line x1="6" y1="12" x2="6.01" y2="12" />
+              <line x1="10" y1="12" x2="10.01" y2="12" />
+              <line x1="14" y1="12" x2="14.01" y2="12" />
+              <line x1="18" y1="12" x2="18.01" y2="12" />
+              <line x1="7" y1="16" x2="17" y2="16" />
+            </svg>
+            <span style="flex: 1; text-align: left;">Bảng phím tắt</span>
+            <span class="keycap" style="min-width: 18px; height: 18px; font-size: 10px;">?</span>
+          </button>
+          <button id="topbar-backup-btn" class="sidebar-footer-btn" title="Quản lý sao lưu dữ liệu"
+            aria-label="Sao lưu dữ liệu">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+              <ellipse cx="12" cy="5" rx="9" ry="3" />
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+            </svg>
+            <span>Sao lưu & Khôi phục dữ liệu</span>
+          </button>
         </div>
       </aside>
 

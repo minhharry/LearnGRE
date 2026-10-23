@@ -254,12 +254,6 @@ class AppController {
 
     document.getElementById('session-theme-btn')?.addEventListener('click', () => {
       this.toggleTheme();
-      const curTheme = this.storageData.ui_prefs.theme || 'dark';
-      const btn = document.getElementById('session-theme-btn');
-      if (btn) {
-        btn.innerHTML = curTheme === 'dark' ? ICONS.sun : ICONS.moon;
-        btn.title = curTheme === 'dark' ? 'Giao diện Sáng' : 'Giao diện Tối';
-      }
     });
 
     const handleExitSession = () => {
@@ -458,21 +452,22 @@ class AppController {
 
     // Theme Toggle Button (VS Code Dark / Light)
     document.getElementById('topbar-theme-btn')?.addEventListener('click', () => {
-      const current = document.documentElement.getAttribute('data-theme') || 'dark';
-      const nextTheme = current === 'dark' ? 'light' : 'dark';
-      this.applyTheme(nextTheme);
+      this.toggleTheme();
     });
 
     // Modals
     const shortcutsModal = document.getElementById('shortcuts-modal');
     const backupModal = document.getElementById('backup-modal');
 
-    document.getElementById('topbar-shortcuts-btn')?.addEventListener('click', () => {
-      shortcutsModal.classList.add('active');
-    });
+    const handleOpenShortcuts = () => {
+      shortcutsModal?.classList.add('active');
+    };
+
+    document.getElementById('topbar-shortcuts-btn')?.addEventListener('click', handleOpenShortcuts);
+    document.getElementById('sidebar-shortcuts-btn')?.addEventListener('click', handleOpenShortcuts);
 
     document.getElementById('topbar-backup-btn')?.addEventListener('click', () => {
-      backupModal.classList.add('active');
+      backupModal?.classList.add('active');
     });
 
     document.querySelectorAll('.modal-close-btn, .modal-cancel-btn').forEach((btn) => {
@@ -660,6 +655,12 @@ class AppController {
     if (sidebar) {
       sidebar.style.width = `${width}px`;
     }
+  }
+
+  toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || this.storageData.ui_prefs.theme || 'dark';
+    const nextTheme = current === 'dark' ? 'light' : 'dark';
+    this.applyTheme(nextTheme);
   }
 
   applyTheme(theme) {

@@ -81,9 +81,9 @@ Tất cả các dạng trắc nghiệm đơn đều chuẩn hóa về dãy phím
 
 ### 2.4. Khả năng thích ứng Đa màn hình (Responsive Design)
 
-* **Desktop (>= 1024px):** Giao diện 2 cột dạng Split-Pane có thể kéo giãn chiều rộng. Cột trái hiển thị danh sách 32 Group và tiến độ Mastery; cột phải là không gian thực hành.
-* **Tablet (768px - 1023px):** Cột trái thu gọn vào Collapsible Drawer.
-* **Mobile (< 768px):** Giao diện 1 cột tối ưu cho cảm ứng, chiều cao nút lựa chọn tối thiểu `52px`. Nút "Tiếp tục" dạng full-width cố định sát đáy màn hình khi hiển thị giải thích.
+* **Desktop (>= 1024px):** Giao diện 2 cột dạng Split-Pane có thể kéo giãn chiều rộng. Cột trái hiển thị danh sách 32 Group, Chế độ học tập (Lộ trình Chuẩn / Cram), Bảng phím tắt và nút Quản lý Sao lưu dữ liệu; cột phải là không gian thực hành. Khi vào phiên học (`in-session`), cả thanh top-bar chung lẫn sidebar và split-handle đều được tự động ẩn hoàn toàn để tập trung 100% không gian cho phiên làm bài (giao diện tối giản Mouseless).
+* **Tablet (768px - 1023px):** Cột trái thu gọn vào Collapsible Drawer (mở bằng nút menu Hamburger).
+* **Mobile (< 768px):** Giao diện 1 cột tối ưu cho cảm ứng, chuyển đổi chế độ học và chức năng Sao lưu/Khôi phục được tích hợp trong Sidebar Drawer (truy cập qua nút Hamburger); nút bảng phím tắt tự động ẩn trên màn hình cảm ứng (`desktop-only`). Chiều cao nút lựa chọn tối thiểu `52px`. Nút "Tiếp tục" dạng full-width cố định sát đáy màn hình khi hiển thị giải thích.
 
 ---
 

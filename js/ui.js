@@ -96,14 +96,20 @@ export function renderTopBar(data, isBackupDue) {
  * Updates Theme Toggle Button Icon based on current theme.
  */
 export function renderThemeButton(theme) {
-  const btn = document.getElementById('topbar-theme-btn');
-  if (!btn) return;
-  if (theme === 'dark') {
-    btn.innerHTML = ICONS.sun;
-    btn.title = 'Chuyển sang giao diện Sáng';
-  } else {
-    btn.innerHTML = ICONS.moon;
-    btn.title = 'Chuyển sang giao diện Tối (VS Code theme)';
+  const isDark = theme === 'dark';
+  const iconHtml = isDark ? ICONS.sun : ICONS.moon;
+  const tooltip = isDark ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối (VS Code theme)';
+
+  const topbarBtn = document.getElementById('topbar-theme-btn');
+  if (topbarBtn) {
+    topbarBtn.innerHTML = iconHtml;
+    topbarBtn.title = tooltip;
+  }
+
+  const sessionBtn = document.getElementById('session-theme-btn');
+  if (sessionBtn) {
+    sessionBtn.innerHTML = iconHtml;
+    sessionBtn.title = tooltip;
   }
 }
 

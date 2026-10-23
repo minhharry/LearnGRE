@@ -99,8 +99,18 @@
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
-body.in-session #topbar-streak {
+/* During active sessions, hide top navigation bar and sidebar on desktop to maximize focus */
+body.in-session .top-bar {
   display: none;
+}
+
+body.in-session .app-body {
+  height: 100vh;
+}
+
+body.in-session .sidebar,
+body.in-session .split-handle {
+  display: none !important;
 }
 
 .streak-chip.streak-active {
@@ -301,11 +311,71 @@ body.in-session #topbar-streak {
   gap: 8px;
 }
 
+/* Sidebar Mode Section */
+.sidebar-mode-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.sidebar-mode-section .mode-switcher {
+  width: 100%;
+}
+
+.sidebar-mode-section .mode-btn {
+  flex: 1;
+  text-align: center;
+  padding: 6px 8px;
+}
+
 /* Groups Scrollable List */
 .groups-list-container {
   flex: 1;
   overflow-y: auto;
   padding: 8px 12px;
+  min-height: 0;
+}
+
+/* Sidebar Footer (Backup / Settings) */
+.sidebar-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-footer-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-footer-btn:hover {
+  background-color: var(--bg-tertiary);
+  color: var(--text-title);
+  border-color: var(--border-hover);
 }
 
 .groups-list-container::-webkit-scrollbar {
@@ -366,8 +436,9 @@ body.in-session #topbar-streak {
 }
 
 .group-progress-track {
-  height: 5px;
+  height: 6px;
   background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
   overflow: hidden;
   display: flex;

@@ -91,13 +91,16 @@ html[data-theme="dark"].streak-high {
 
 
 /* CSS Reset */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -110,7 +113,10 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
@@ -223,25 +229,59 @@ a {
 
 /* Animations */
 @keyframes shake-red {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-6px); }
-  40%, 80% { transform: translateX(6px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
 }
 
 @keyframes pulse-success {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.02);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fade-out {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-6px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 
 .animate-fade-in {
@@ -276,19 +316,26 @@ a {
    ========================================================================== */
 [data-theme="dark"] {
   /* VS Code Dark Surfaces */
-  --bg-primary: #1e1e1e;          /* VS Code Editor Background */
-  --bg-secondary: #181818;        /* VS Code Activity Bar / Deep Window Background */
-  --bg-tertiary: #252526;         /* VS Code Sidebar Background */
-  --bg-elevated: #2d2d2d;         /* VS Code Dropdown / Floating Card */
+  --bg-primary: #1e1e1e;
+  /* VS Code Editor Background */
+  --bg-secondary: #181818;
+  /* VS Code Activity Bar / Deep Window Background */
+  --bg-tertiary: #252526;
+  /* VS Code Sidebar Background */
+  --bg-elevated: #2d2d2d;
+  /* VS Code Dropdown / Floating Card */
 
-  --border-color: #333333;        /* VS Code Panel Border */
+  --border-color: #333333;
+  /* VS Code Panel Border */
   --border-subtle: #282828;
   --border-hover: #454545;
   --border-focus: #007acc;
 
   --text-title: #ffffff;
-  --text-body: #cccccc;           /* VS Code Standard Text */
-  --text-muted: #858585;          /* VS Code Dimmed Text */
+  --text-body: #cccccc;
+  /* VS Code Standard Text */
+  --text-muted: #858585;
+  /* VS Code Dimmed Text */
   --text-light: #5a5a5a;
 
   /* VS Code Git / Status Colors */
@@ -387,13 +434,27 @@ a {
 }
 
 [data-theme="dark"] .group-item-card:hover {
-  background-color: #252526;
-  border-color: #333333;
+  background-color: #2a2d2e;
+  border-color: #454545;
 }
 
 [data-theme="dark"] .group-item-card.active {
-  background-color: #252526;
+  background-color: #1f2428;
   border-color: #007acc;
+  box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+}
+
+[data-theme="dark"] .group-progress-track {
+  background-color: #141414;
+  border-color: #383838;
+}
+
+[data-theme="dark"] .progress-segment {
+  background-color: #333333;
+}
+
+[data-theme="dark"] .progress-segment.active {
+  background-color: #58a6ff;
 }
 
 [data-theme="dark"] .option-card {
@@ -431,11 +492,30 @@ a {
   background-color: #252526;
 }
 
-[data-theme="dark"] .level-pill-0 { background-color: #21262d; color: #8b949e; }
-[data-theme="dark"] .level-pill-1 { background-color: #321616; color: #f48771; }
-[data-theme="dark"] .level-pill-2 { background-color: #302613; color: #e3b341; }
-[data-theme="dark"] .level-pill-3 { background-color: #162a3f; color: #58a6ff; }
-[data-theme="dark"] .level-pill-4 { background-color: #142e1b; color: #3fb950; }
+[data-theme="dark"] .level-pill-0 {
+  background-color: #21262d;
+  color: #8b949e;
+}
+
+[data-theme="dark"] .level-pill-1 {
+  background-color: #321616;
+  color: #f48771;
+}
+
+[data-theme="dark"] .level-pill-2 {
+  background-color: #302613;
+  color: #e3b341;
+}
+
+[data-theme="dark"] .level-pill-3 {
+  background-color: #162a3f;
+  color: #58a6ff;
+}
+
+[data-theme="dark"] .level-pill-4 {
+  background-color: #142e1b;
+  color: #3fb950;
+}
 
 [data-theme="dark"] .badge-muted {
   background-color: #252526;
