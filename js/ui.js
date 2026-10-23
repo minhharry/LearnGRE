@@ -510,7 +510,7 @@ export function renderSpeedMatchQuestion({
             ${question.leftWords
               .map(
                 (w) => `
-              <div class="speed-match-card" data-side="left" data-id="${w.id}" data-key="${w.keycap}">
+              <div class="speed-match-card" data-side="left" data-id="${w.id}" data-key="${w.keycap}" data-word="${w.text}">
                 <span class="keycap">${w.keycap}</span>
                 <span class="speed-card-text word-title">${w.text}</span>
               </div>
@@ -603,6 +603,9 @@ export function renderSpeedMatchQuestion({
         if (selectedLeft) selectedLeft.classList.remove('selected');
         selectedLeft = card;
         card.classList.add('selected');
+        if (card.dataset.word) {
+          playPronunciation(card.dataset.word);
+        }
       } else {
         if (selectedRight) selectedRight.classList.remove('selected');
         selectedRight = card;
