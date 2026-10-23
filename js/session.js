@@ -68,7 +68,8 @@ export class SessionManager {
       return;
     }
 
-    // Partition group words into SRS priority pools
+    // Partition words into SRS priority pools:
+    // 1. Current group words: divided into review, active learning, and new words
     const reviewPool = [];
     const learningPool = [];
     const newWordsPool = [];
@@ -85,18 +86,54 @@ export class SessionManager {
       // Level 3 and 4 words not yet due remain resting in their SRS cycle
     }
 
+    // 2. Prior groups words (w.group < this.group): collect words that are due for review or flagged
+    const priorReviewPool = [];
+    if (this.group > 1) {
+      const priorWords = this.allVocab.filter((w) => w.group < this.group);
+      for (const word of priorWords) {
+        const rec = this.storageData.words[word.id];
+        if (rec && (rec.flagged_error || (rec.next_review && rec.next_review <= nowIso))) {
+          priorReviewPool.push(word);
+        }
+      }
+    }
+
     // Determine target words for this session (~10 - 14 items)
     const targetWords = [];
-    // 1. High priority: Review pool
-    targetWords.push(...shuffleArray(reviewPool).slice(0, 5));
 
-    // 2. Medium priority: Active learning
+    // 1. High priority: Review pool
+    // Prioritize current group review words (up to 3-4), then include due review words from prior groups
+    const shuffledCurrentReviews = shuffleArray(reviewPool);
+    const shuffledPriorReviews = shuffleArray(priorReviewPool);
+
+    // Pick up to 3 from current group reviews
+    targetWords.push(...shuffledCurrentReviews.slice(0, 3));
+
+    // Pick due review words from prior groups (up to 3) to prevent forgetting earlier groups
+    const remainingForPriorReview = Math.min(3, 5 - targetWords.length);
+    if (remainingForPriorReview > 0) {
+      targetWords.push(...shuffledPriorReviews.slice(0, remainingForPriorReview));
+    }
+
+    // If still room in review allocation (max 5), fill with remaining current group reviews or prior reviews
+    if (targetWords.length < 5) {
+      const extraCurrent = shuffledCurrentReviews.slice(3);
+      const remainingSlots = 5 - targetWords.length;
+      targetWords.push(...extraCurrent.slice(0, remainingSlots));
+    }
+    if (targetWords.length < 5) {
+      const extraPrior = shuffledPriorReviews.slice(remainingForPriorReview);
+      const remainingSlots = 5 - targetWords.length;
+      targetWords.push(...extraPrior.slice(0, remainingSlots));
+    }
+
+    // 2. Medium priority: Active learning from current group
     const remainingForLearning = 8 - targetWords.length;
     if (remainingForLearning > 0) {
       targetWords.push(...shuffleArray(learningPool).slice(0, remainingForLearning));
     }
 
-    // 3. New words pool
+    // 3. New words pool from current group
     const remainingForNew = 12 - targetWords.length;
     if (remainingForNew > 0) {
       targetWords.push(...shuffleArray(newWordsPool).slice(0, remainingForNew));
