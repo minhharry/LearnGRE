@@ -302,6 +302,17 @@
 
   <!-- Main JavaScript Module Entry Point -->
   <script type="module" src="js/app.js"></script>
+
+  <!-- Service Worker Registration for Offline Caching -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          console.warn('Service Worker registration skipped or failed:', err);
+        });
+      });
+    }
+  </script>
 </body>
 
 </html>
