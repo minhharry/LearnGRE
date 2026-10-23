@@ -86,10 +86,13 @@
   max-width: 860px;
   margin: 0 auto;
   width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .question-card {
   width: 100%;
+  box-sizing: border-box;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -104,6 +107,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
@@ -421,6 +426,8 @@
    -------------------------------------------------------------------------- */
 .rationale-container {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-top: 14px;
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
@@ -434,6 +441,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-subtle);
@@ -452,6 +460,7 @@
   color: var(--text-title);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -486,16 +495,21 @@
   grid-template-columns: 1fr;
   gap: 6px;
   margin-top: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .vocab-lookup-item {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  padding: 6px 12px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding: 8px 12px;
   background-color: var(--bg-secondary);
   border-radius: var(--radius-sm);
   font-size: 13px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .vocab-lookup-item.highlight-correct {
@@ -506,7 +520,7 @@
 .lookup-word {
   font-weight: 700;
   color: var(--text-title);
-  min-width: 110px;
+  min-width: 90px;
 }
 
 .lookup-pos {
@@ -514,33 +528,30 @@
   text-transform: uppercase;
   font-weight: 600;
   color: var(--text-muted);
-  min-width: 40px;
+  min-width: 36px;
 }
 
 .lookup-vi {
   font-weight: 500;
   color: var(--accent-color);
-  min-width: 150px;
+  min-width: 120px;
 }
 
 .lookup-en {
   color: var(--text-muted);
   flex: 1;
+  min-width: 160px;
+  word-break: break-word;
 }
 
-/* --------------------------------------------------------------------------
-   Sticky / Bottom Navigation Bar for Session
-   -------------------------------------------------------------------------- */
 .session-footer-bar {
   margin-top: 14px;
+  margin-bottom: 8px;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  position: sticky;
-  bottom: 12px;
-  z-index: 20;
 }
 
 /* Dark Mode Overrides for Components */
@@ -777,12 +788,25 @@
   background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-sm);
+  width: 100%;
+}
+
+.word-table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.word-table-container::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: var(--radius-full);
 }
 
 .word-table {
   width: 100%;
+  min-width: 580px;
   border-collapse: collapse;
   text-align: left;
 }

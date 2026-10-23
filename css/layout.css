@@ -94,7 +94,13 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all var(--transition-fast);
+}
+
+body.in-session #topbar-streak {
+  display: none;
 }
 
 .streak-chip.streak-active {
@@ -417,16 +423,29 @@
 }
 
 /* --------------------------------------------------------------------------
-   Main Content Stage
+   Main Content Stage & Workspace Wrapper
    -------------------------------------------------------------------------- */
-.main-stage {
+.stage-wrapper {
   flex: 1;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   background-color: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   position: relative;
+  min-width: 0;
+}
+
+.main-stage {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-width: 0;
 }
 
 .main-stage::-webkit-scrollbar {

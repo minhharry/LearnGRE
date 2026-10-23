@@ -26,6 +26,7 @@ import {
   renderFlashRecallQuestion,
   renderTcQuestion,
   renderTcRationale,
+  renderFlashFeedback,
   renderFlashMistakeFeedback,
   renderSessionSummary,
   renderThemeButton,
@@ -138,6 +139,7 @@ class AppController {
     if (progressHeader && this.currentView !== 'session') {
       progressHeader.style.display = 'none';
     }
+    document.body.classList.toggle('in-session', this.currentView === 'session');
 
     const navAll = document.getElementById('nav-all-groups');
     const navErr = document.getElementById('nav-error-notebook');
@@ -183,6 +185,7 @@ class AppController {
    */
   startSession(mode = 'standard') {
     this.currentView = 'session';
+    document.body.classList.add('in-session');
     this.activeSession = new SessionManager({
       group: this.currentGroup,
       vocabList: this.vocabList,
@@ -217,6 +220,7 @@ class AppController {
         onRestartSession: () => this.startSession('standard'),
         onReturnHome: () => {
           this.currentView = 'dashboard';
+          document.body.classList.remove('in-session');
           this.renderSidebar();
           this.renderCurrentView();
         },
@@ -226,6 +230,7 @@ class AppController {
             this.storageData.progression.current_group = this.currentGroup;
             saveProgressData(this.storageData);
             this.currentView = 'dashboard';
+            document.body.classList.remove('in-session');
             this.renderSidebar();
             this.renderCurrentView();
           }
@@ -248,6 +253,7 @@ class AppController {
 
     document.getElementById('btn-exit-session')?.addEventListener('click', () => {
       this.currentView = 'dashboard';
+      document.body.classList.remove('in-session');
       this.renderSidebar();
       this.renderCurrentView();
     });
@@ -292,19 +298,13 @@ class AppController {
             sentenceText: '',
           });
 
-          if (isCorrect) {
-            // Auto-advance after 500ms
-            setTimeout(() => {
-              this.advanceToNextQuestion();
-            }, 500);
-          } else {
-            // Pause, show feedback and wait for continue
-            this.isWaitingForContinue = true;
-            renderFlashMistakeFeedback({
-              question,
-              onContinue: () => this.advanceToNextQuestion(),
-            });
-          }
+          // Always show answer key and feedback even if right
+          this.isWaitingForContinue = true;
+          renderFlashFeedback({
+            question,
+            isCorrect,
+            onContinue: () => this.advanceToNextQuestion(),
+          });
         },
       });
     } else if (question.type === 'TC') {
@@ -324,6 +324,7 @@ class AppController {
           this.isWaitingForContinue = true;
           renderTcRationale({
             question,
+            isCorrect,
             onContinue: () => this.advanceToNextQuestion(),
           });
         },

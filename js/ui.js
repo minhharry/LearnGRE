@@ -639,7 +639,7 @@ export function renderFlashRecallQuestion({
           </div>
         </div>
 
-        <div class="options-grid single-column" id="flash-options-container" style="margin-top: 24px;">
+        <div class="options-grid single-column" id="flash-options-container" style="margin-top: 12px;">
           ${question.options
             .map(
               (opt) => `
@@ -736,7 +736,7 @@ export function renderTcQuestion({
           ${formattedSentence}
         </div>
 
-        <div class="options-grid" id="tc-options-container" style="margin-top: 24px;">
+        <div class="options-grid" id="tc-options-container" style="margin-top: 12px;">
           ${question.options
             .map(
               (opt) => `
@@ -809,20 +809,25 @@ export function renderTcQuestion({
 /**
  * Shows the Hybrid Rationale card for TC question.
  */
-export function renderTcRationale({ question, onContinue }) {
+export function renderTcRationale({ question, isCorrect, onContinue }) {
   const container = document.getElementById('tc-rationale-placeholder');
   if (!container) return;
 
+  const statusBadge = typeof isCorrect === 'boolean'
+    ? (isCorrect
+        ? `<span class="badge badge-green">Chính xác!</span>`
+        : `<span class="badge badge-red">Chưa chính xác</span>`)
+    : '';
+
   container.innerHTML = `
-    <div class="rationale-container animate-fade-in">
+    <div class="rationale-container animate-fade-in" style="margin-top: 12px;">
       <div class="rationale-header">
         <div class="rationale-title">
-          ${ICONS.book} Phân tích Ngữ cảnh
+          ${ICONS.book}
+          ${statusBadge}
+          <span>Phân tích Ngữ cảnh</span>
           <span class="badge badge-green" style="margin-left: 6px;">Đáp án: ${question.correctWord}</span>
         </div>
-        <button id="btn-tc-continue-top" class="btn-primary btn-sm" title="Tiếp tục (Space hoặc Enter)">
-          Tiếp tục <span class="keycap keycap-sm" style="background: rgba(255,255,255,0.25); color: white; border: none;">Space</span>
-        </button>
       </div>
 
       <div class="rationale-clue-box">
@@ -862,31 +867,37 @@ export function renderTcRationale({ question, onContinue }) {
   `;
 
   document.getElementById('btn-tc-continue')?.addEventListener('click', onContinue);
-  document.getElementById('btn-tc-continue-top')?.addEventListener('click', onContinue);
 
-  // Smooth scroll so explanation is in clear view without manual dragging
+  // Smooth scroll so explanation starts cleanly in view without clipping top or bottom
   setTimeout(() => {
-    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const mainStage = document.getElementById('main-stage');
+    if (mainStage && container) {
+      const targetScroll = container.offsetTop - 12;
+      mainStage.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+    }
   }, 50);
 }
 
 /**
- * Shows definition feedback when Flash Recall answer is wrong.
+ * Shows definition feedback and answer key for Flash Recall question.
  */
-export function renderFlashMistakeFeedback({ question, onContinue }) {
+export function renderFlashFeedback({ question, isCorrect = false, onContinue }) {
   const container = document.getElementById('flash-feedback-placeholder');
   if (!container) return;
 
+  const statusBadge = isCorrect
+    ? `<span class="badge badge-green">Chính xác!</span>`
+    : `<span class="badge badge-red">Chưa chính xác</span>`;
+
   container.innerHTML = `
-    <div class="rationale-container animate-fade-in" style="margin-top: 14px;">
+    <div class="rationale-container animate-fade-in" style="margin-top: 12px;">
       <div class="rationale-header">
         <div class="rationale-title">
-          ${ICONS.book} Định nghĩa chính xác
+          ${ICONS.book}
+          ${statusBadge}
+          <span>Đáp án:</span>
           <span class="badge badge-green" style="margin-left: 6px;">${question.promptWord}</span>
         </div>
-        <button id="btn-flash-continue-top" class="btn-primary btn-sm" title="Tiếp tục (Space hoặc Enter)">
-          Tiếp tục <span class="keycap keycap-sm" style="background: rgba(255,255,255,0.25); color: white; border: none;">Space</span>
-        </button>
       </div>
 
       <div class="vocab-lookup-grid">
@@ -907,12 +918,17 @@ export function renderFlashMistakeFeedback({ question, onContinue }) {
   `;
 
   document.getElementById('btn-flash-continue')?.addEventListener('click', onContinue);
-  document.getElementById('btn-flash-continue-top')?.addEventListener('click', onContinue);
 
   setTimeout(() => {
-    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const mainStage = document.getElementById('main-stage');
+    if (mainStage && container) {
+      const targetScroll = container.offsetTop - 12;
+      mainStage.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+    }
   }, 50);
 }
+
+export const renderFlashMistakeFeedback = renderFlashFeedback;
 
 /**
  * Renders the Session Summary screen.
