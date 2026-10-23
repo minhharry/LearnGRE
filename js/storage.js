@@ -4,7 +4,7 @@
  * System: LearnGRE Zero-Friction Desktop-Web App
  */
 
-export const STORAGE_KEY = 'GRE_PROGRESS_DATA_V4';
+export const STORAGE_KEY = 'GRE_PROGRESS_DATA';
 export const BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 /**

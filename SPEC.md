@@ -107,7 +107,7 @@ Mỗi dòng là một câu hỏi học thuật Text Completion hoàn chỉnh (1 
 {"id": "q_amorphous_tc01", "target_id": "g1_w02", "type": "TC", "domain": "Social Sciences", "sentence": "Because the nascent organization operated without formal bylaws, its leadership structure remained entirely [BLANK], resulting in overlapping responsibilities.", "pos_required": "adj", "form_required": "base", "clue": "operated without formal bylaws ... overlapping responsibilities", "correct_answer": "amorphous", "distractors": ["austere", "didactic", "homogeneous"], "rationale": "Cụm 'without formal bylaws' chỉ việc thiếu cấu trúc quy chuẩn, dẫn tới bộ máy lãnh đạo 'amorphous' (vô định hình, không rõ ràng)."}
 ```
 
-### 3.3. Lược đồ Lưu trữ Trình duyệt (`localStorage` – Key: `GRE_PROGRESS_DATA_V4`)
+### 3.3. Lược đồ Lưu trữ Trình duyệt (`localStorage` – Key: `GRE_PROGRESS_DATA`)
 
 Đơn giản hóa lược đồ theo dõi tiến độ, loại bỏ mảng `formats_cleared` để tập trung vào số lần đúng liên tiếp và phản xạ:
 

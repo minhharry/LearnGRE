@@ -326,7 +326,7 @@ class AppController {
         question,
         isFlagged,
         onToggleFlag: () => this.toggleCurrentQuestionWordFlag(),
-        onSelectOption: ({ isCorrect }) => {
+        onSelectOption: ({ isCorrect, chosenWord }) => {
           const elapsed = Date.now() - this.questionStartTime;
           this.handleQuestionAnswer({
             isCorrect,
@@ -339,6 +339,7 @@ class AppController {
           renderTcRationale({
             question,
             isCorrect,
+            chosenWord,
             onContinue: () => this.advanceToNextQuestion(),
           });
         },

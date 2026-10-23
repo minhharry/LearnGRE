@@ -801,6 +801,8 @@ export function renderTcQuestion({
       if (correctEl) correctEl.classList.add('is-correct');
     }
 
+    question.chosenWord = chosenWord;
+
     onSelectOption({
       isCorrect,
       chosenWord,
@@ -820,7 +822,7 @@ export function renderTcQuestion({
 /**
  * Shows the Hybrid Rationale card for TC question.
  */
-export function renderTcRationale({ question, isCorrect, onContinue }) {
+export function renderTcRationale({ question, isCorrect, chosenWord, onContinue }) {
   const container = document.getElementById('tc-rationale-placeholder');
   if (!container) return;
 
@@ -832,6 +834,8 @@ export function renderTcRationale({ question, isCorrect, onContinue }) {
         ? `<span class="badge badge-green">Chính xác!</span>`
         : `<span class="badge badge-red">Chưa chính xác</span>`)
     : '';
+
+  const selectedWord = chosenWord || question.chosenWord;
 
   container.innerHTML = `
     <div class="rationale-container animate-fade-in" style="margin-top: 12px;">
@@ -862,9 +866,17 @@ export function renderTcRationale({ question, isCorrect, onContinue }) {
 
       <div class="vocab-lookup-grid">
         ${question.options
-          .map(
-            (opt) => `
-          <div class="vocab-lookup-item ${opt.isCorrect ? 'highlight-correct' : ''}">
+          .map((opt) => {
+            const isSelectedWrong =
+              !isCorrect &&
+              selectedWord &&
+              opt.word.toLowerCase() === selectedWord.toLowerCase();
+            const highlightClass = opt.isCorrect
+              ? 'highlight-correct'
+              : (isSelectedWrong ? 'highlight-incorrect' : '');
+
+            return `
+          <div class="vocab-lookup-item ${highlightClass}">
             <div class="lookup-word-row">
               <span class="lookup-word">${opt.word}</span>
               <button class="lookup-audio-btn" data-word="${opt.word}" title="Nghe phát âm: ${opt.word}">
@@ -875,8 +887,8 @@ export function renderTcRationale({ question, isCorrect, onContinue }) {
             <span class="lookup-vi">${opt.vi_gloss || ''}</span>
             <span class="lookup-en">${opt.definition || ''}</span>
           </div>
-        `
-          )
+        `;
+          })
           .join('')}
       </div>
 

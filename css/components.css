@@ -530,11 +530,17 @@
   font-size: 13px;
   box-sizing: border-box;
   width: 100%;
+  border: 1px solid transparent;
 }
 
 .vocab-lookup-item.highlight-correct {
   background-color: var(--success-bg);
-  border: 1px solid #a7f3d0;
+  border-color: #a7f3d0;
+}
+
+.vocab-lookup-item.highlight-incorrect {
+  background-color: var(--error-bg);
+  border-color: #fca5a5;
 }
 
 .lookup-word-row {
@@ -616,6 +622,11 @@
 [data-theme="dark"] .vocab-lookup-item.highlight-correct {
   background-color: #142e1b;
   border-color: #2ea043;
+}
+
+[data-theme="dark"] .vocab-lookup-item.highlight-incorrect {
+  background-color: #321616;
+  border-color: #da3633;
 }
 
 [data-theme="dark"] .tc-blank {
