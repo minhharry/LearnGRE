@@ -8,10 +8,10 @@ export const SRS_CONFIG = {
   intervals_hours: {
     level_1: 4,
     level_2: 24,
-    level_3: 72,
-    level_4: 168,
+    level_3: 48,
+    level_4: 72,
   },
-  level_4_extension_hours: 240, // 10 days
+  level_4_extension_hours: 120, // 5 days
   penalty_reset_hours: 1,
   mastery_consecutive_correct: 3,
   fluent_recall_multiplier: 1.8,

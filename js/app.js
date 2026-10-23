@@ -187,6 +187,7 @@ class AppController {
   startSession(mode = 'standard') {
     this.currentView = 'session';
     document.body.classList.add('in-session');
+    this.renderSidebar();
     this.activeSession = new SessionManager({
       group: this.currentGroup,
       vocabList: this.vocabList,
@@ -217,6 +218,7 @@ class AppController {
       }
 
       document.body.classList.remove('in-session');
+      this.renderSidebar();
       renderSessionSummary({
         metrics,
         onRestartSession: () => this.startSession('standard'),
