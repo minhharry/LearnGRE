@@ -919,10 +919,137 @@ def generate_text_completion_questions(
     return existing_question_records
 
 
+def fix_integrity_defects(
+    vocab_jsonl_path: Path,
+    question_templates_jsonl_path: Path,
+    configuration: dict,
+) -> int:
+    """
+    Repair questions failing integrity checks:
+    - Re-select valid distractors violating synonym disjointness, uniqueness, or distractor count.
+    - Fix missing '[BLANK]' placeholders and eliminate target answer leakage.
+    Returns the total number of repaired question items.
+    """
+    sys.stdout.write(
+        "Running automated repair on question templates with integrity defects...\n"
+    )
+
+    vocab_records = load_existing_jsonl_records(
+        vocab_jsonl_path, primary_key_field="id"
+    )
+    question_records = load_existing_jsonl_records(
+        question_templates_jsonl_path, primary_key_field="id"
+    )
+
+    vocab_by_word = {
+        record["word"].lower().strip(): record for record in vocab_records.values()
+    }
+    vocab_by_id = {record["id"]: record for record in vocab_records.values()}
+    all_vocabulary_records = list(vocab_records.values())
+
+    synonym_clusters = build_bidirectional_synonym_graph(all_vocabulary_records)
+
+    distractor_config = configuration.get("distractors", {})
+    academic_fallback_words = distractor_config.get("academic_fallback_words", {})
+    definition_stopwords = set(distractor_config.get("definition_stopwords", []))
+
+    repaired_questions_count = 0
+
+    for question_id, question in question_records.items():
+        correct_answer = question.get("correct_answer", "").strip().lower()
+        distractors = [d.strip().lower() for d in question.get("distractors", [])]
+        sentence = question.get("sentence", "")
+        target_id = question.get("target_id", "")
+
+        target_record = vocab_by_id.get(target_id) or vocab_by_word.get(correct_answer)
+        if not target_record:
+            sys.stderr.write(
+                f"Warning: No vocabulary record found matching '{correct_answer}' for {question_id}.\n"
+            )
+            continue
+
+        needs_distractor_repair = False
+        target_cluster = synonym_clusters.get(correct_answer, {correct_answer})
+
+        # Check distractor constraints
+        if len(distractors) != 3:
+            needs_distractor_repair = True
+        elif len(set([correct_answer] + distractors)) != 4:
+            needs_distractor_repair = True
+        else:
+            for distractor in distractors:
+                if distractor in target_cluster:
+                    needs_distractor_repair = True
+                    break
+
+        sentence_modified = False
+
+        # Check missing blank placeholder
+        if "[BLANK]" not in sentence:
+            pattern = re.compile(rf"\b{re.escape(correct_answer)}\b", re.IGNORECASE)
+            if pattern.search(sentence):
+                sentence = pattern.sub("[BLANK]", sentence, count=1)
+            else:
+                sentence = f"{sentence} [BLANK]"
+            question["sentence"] = sentence
+            sentence_modified = True
+
+        # Check answer leakage outside [BLANK]
+        sentence_without_blank = sentence.replace("[BLANK]", " ").lower()
+        leak_pattern = re.compile(rf"\b{re.escape(correct_answer)}\b", re.IGNORECASE)
+        if leak_pattern.search(sentence_without_blank):
+            pos_required = question.get(
+                "pos_required", target_record.get("pos", "noun")
+            )
+            replacement = "flaw" if pos_required == "noun" else ""
+            sentence = leak_pattern.sub(replacement, sentence)
+            question["sentence"] = sentence
+            sentence_modified = True
+
+        if needs_distractor_repair:
+            new_distractors = select_text_completion_distractors(
+                target_record=target_record,
+                all_vocabulary_records=all_vocabulary_records,
+                synonym_clusters=synonym_clusters,
+                academic_fallback_words=academic_fallback_words,
+                definition_stopwords=definition_stopwords,
+            )
+            question["distractors"] = new_distractors
+
+        if needs_distractor_repair or sentence_modified:
+            repaired_questions_count += 1
+
+    if repaired_questions_count > 0:
+        all_questions_list = list(question_records.values())
+        all_questions_list.sort(key=lambda item: item["id"])
+        with open(question_templates_jsonl_path, "w", encoding="utf-8") as file_handle:
+            for item in all_questions_list:
+                file_handle.write(json.dumps(item, ensure_ascii=False) + "\n")
+        sys.stdout.write(
+            f"Successfully repaired and saved {repaired_questions_count} question template(s).\n"
+        )
+    else:
+        sys.stdout.write("No defective question templates required repair.\n")
+
+    return repaired_questions_count
+
+
 def run_comprehensive_integrity_check(
-    vocab_jsonl_path: Path, question_templates_jsonl_path: Path
+    vocab_jsonl_path: Path,
+    question_templates_jsonl_path: Path,
+    auto_fix: bool = False,
+    configuration: Optional[dict] = None,
 ) -> None:
     """Validate 100% of generated records for consistency, schema adherence, and synonym disjointness."""
+    if auto_fix:
+        if configuration is None:
+            configuration = load_runtime_configuration(Path("scripts/config.json"))
+        fix_integrity_defects(
+            vocab_jsonl_path=vocab_jsonl_path,
+            question_templates_jsonl_path=question_templates_jsonl_path,
+            configuration=configuration,
+        )
+
     sys.stdout.write("Running automated integrity assertion on generated files...\n")
 
     vocab_records = load_existing_jsonl_records(
@@ -994,6 +1121,10 @@ def run_comprehensive_integrity_check(
         )
         for error in validation_errors[:20]:
             sys.stderr.write(f"  - {error}\n")
+        if not auto_fix:
+            sys.stderr.write(
+                "\nRun with '--fix' flag (e.g., 'uv run python -m scripts.generate_data --fix') to automatically repair failed entries.\n"
+            )
         raise AssertionError("Data integrity check failed!")
 
     sys.stdout.write(
@@ -1045,6 +1176,12 @@ def parse_command_line_arguments(default_configuration: dict) -> argparse.Namesp
         default=False,
         help="Run integrity verification check only.",
     )
+    argument_parser.add_argument(
+        "--fix",
+        action="store_true",
+        default=False,
+        help="Automatically repair entries that fail integrity checks (e.g., re-selecting valid distractors).",
+    )
     return argument_parser.parse_args()
 
 
@@ -1066,7 +1203,28 @@ def main() -> None:
         run_comprehensive_integrity_check(
             vocab_jsonl_path=vocab_jsonl_path,
             question_templates_jsonl_path=question_templates_jsonl_path,
+            auto_fix=cli_arguments.fix,
+            configuration=configuration,
         )
+        return
+
+    # Check if --fix is invoked standalone (without explicit --group or --force)
+    group_specified = any(
+        arg == "--group" or arg.startswith("--group=") for arg in sys.argv
+    )
+    if (
+        cli_arguments.fix
+        and not group_specified
+        and not cli_arguments.force
+        and cli_arguments.step == "all"
+    ):
+        run_comprehensive_integrity_check(
+            vocab_jsonl_path=vocab_jsonl_path,
+            question_templates_jsonl_path=question_templates_jsonl_path,
+            auto_fix=True,
+            configuration=configuration,
+        )
+        sys.stdout.write("Fix and integrity verification completed successfully.\n")
         return
 
     parsed_wordbank = parse_wordbank_csv(wordbank_csv_path)
@@ -1117,6 +1275,8 @@ def main() -> None:
     run_comprehensive_integrity_check(
         vocab_jsonl_path=vocab_jsonl_path,
         question_templates_jsonl_path=question_templates_jsonl_path,
+        auto_fix=cli_arguments.fix,
+        configuration=configuration,
     )
 
     sys.stdout.write("Pipeline execution completed successfully.\n")
@@ -1124,3 +1284,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

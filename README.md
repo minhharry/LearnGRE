@@ -96,6 +96,18 @@ uv run python -m scripts.generate_data --group 1 --force
 
 ```bash
 uv run python -m scripts.generate_data --verify
+```
+
+### Tự động sửa lỗi toàn vẹn (Auto-fix failed entries):
+
+```bash
+uv run python -m scripts.generate_data --fix
+```
+
+Hoặc kết hợp tự động sửa khi chạy toàn bộ pipeline:
+
+```bash
+uv run python -m scripts.generate_data --group all --fix
 
 ```
 
