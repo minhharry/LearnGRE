@@ -67,6 +67,17 @@
     height: 48px;
   }
 
+  #app-root {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .app-body {
+    height: calc(100vh - 48px);
+    height: calc(100dvh - 48px);
+    height: calc(100svh - 48px);
+  }
+
   /* During active sessions on mobile, hide the desktop top bar and reclaim 100% full vertical height */
   body.in-session .top-bar {
     display: none;
@@ -101,6 +112,14 @@
   .sidebar {
     width: 85vw;
     max-width: 320px;
+    height: 100%;
+    max-height: calc(100dvh - 48px);
+    max-height: calc(100svh - 48px);
+  }
+
+  .sidebar-footer {
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    flex-shrink: 0;
   }
 
   .brand-tag {
