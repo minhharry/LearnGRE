@@ -30,6 +30,7 @@ import {
   renderFlashMistakeFeedback,
   renderSessionSummary,
   renderThemeButton,
+  ICONS,
 } from './ui.js';
 
 class AppController {
@@ -215,12 +216,12 @@ class AppController {
         }
       }
 
+      document.body.classList.remove('in-session');
       renderSessionSummary({
         metrics,
         onRestartSession: () => this.startSession('standard'),
         onReturnHome: () => {
           this.currentView = 'dashboard';
-          document.body.classList.remove('in-session');
           this.renderSidebar();
           this.renderCurrentView();
         },
@@ -230,7 +231,6 @@ class AppController {
             this.storageData.progression.current_group = this.currentGroup;
             saveProgressData(this.storageData);
             this.currentView = 'dashboard';
-            document.body.classList.remove('in-session');
             this.renderSidebar();
             this.renderCurrentView();
           }
@@ -249,14 +249,28 @@ class AppController {
       isRedemption,
       streak: this.storageData.progression.daily_streak || 1,
       results: this.activeSession.results,
+      theme: this.storageData.ui_prefs.theme || 'dark',
     });
 
-    document.getElementById('btn-exit-session')?.addEventListener('click', () => {
+    document.getElementById('session-theme-btn')?.addEventListener('click', () => {
+      this.toggleTheme();
+      const curTheme = this.storageData.ui_prefs.theme || 'dark';
+      const btn = document.getElementById('session-theme-btn');
+      if (btn) {
+        btn.innerHTML = curTheme === 'dark' ? ICONS.sun : ICONS.moon;
+        btn.title = curTheme === 'dark' ? 'Giao diện Sáng' : 'Giao diện Tối';
+      }
+    });
+
+    const handleExitSession = () => {
       this.currentView = 'dashboard';
       document.body.classList.remove('in-session');
       this.renderSidebar();
       this.renderCurrentView();
-    });
+    };
+
+    document.getElementById('session-home-btn')?.addEventListener('click', handleExitSession);
+    document.getElementById('btn-exit-session')?.addEventListener('click', handleExitSession);
 
     const isFlagged = question.targetWord
       ? (this.storageData.words[question.targetWord.id] || {}).flagged_error
@@ -560,8 +574,12 @@ class AppController {
         // Key P: Pronunciation
         if (e.key === 'p' || e.key === 'P') {
           e.preventDefault();
+          // Avoid spoiling TC questions before user has answered
+          if (q.type === 'TC' && !this.isWaitingForContinue) {
+            return;
+          }
           const word = q.targetWord ? q.targetWord.word : q.promptWord || q.correctWord;
-          playPronunciation(word);
+          if (word) playPronunciation(word);
           return;
         }
 

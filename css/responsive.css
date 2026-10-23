@@ -64,6 +64,34 @@
 @media (max-width: 767px) {
   .top-bar {
     padding: 0 10px;
+    height: 48px;
+  }
+
+  /* During active sessions on mobile, hide the desktop top bar and reclaim 100% full vertical height */
+  body.in-session .top-bar {
+    display: none;
+  }
+
+  body.in-session #app-root,
+  body.in-session .app-body {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100%;
+  }
+
+  body.in-session .stage-wrapper {
+    height: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.in-session .main-stage {
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .brand-tag,
@@ -76,43 +104,193 @@
     justify-content: flex-end;
   }
 
-  .question-viewport {
-    padding: 12px 12px 24px 12px;
+  /* Sleek, space-efficient single-row session header on mobile */
+  .session-progress-header {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    gap: 8px;
+    height: 48px;
+    min-height: 48px;
+    box-sizing: border-box;
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
   }
 
+  .session-progress-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .session-home-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+  }
+
+  .session-counter-text {
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--text-title);
+  }
+
+  /* Segmented progress bar between left and right on the same row */
+  .session-progress-track {
+    order: 0;
+    flex: 1;
+    display: flex;
+    gap: 3px;
+    margin: 0 6px;
+    min-width: 50px;
+    max-width: none;
+    width: auto;
+  }
+
+  .progress-segment {
+    height: 5px;
+    flex: 1;
+    border-radius: var(--radius-full);
+  }
+
+  .session-progress-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .session-progress-right .icon-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Question viewport & card sizing: eliminate wasted space below */
+  .question-viewport {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px 16px 12px;
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Full-height card during active question, eliminating bottom void and bringing options into thumb zone */
   .question-card {
-    padding: 14px 16px;
-    margin-bottom: 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 14px;
+    margin-bottom: 0;
+    border-radius: var(--radius-lg);
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    box-sizing: border-box;
+  }
+
+
+  .question-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 6px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
+  .question-domain-tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .question-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .action-chip-btn {
+    padding: 4px 8px;
+    font-size: 11.5px;
+    gap: 4px;
   }
 
   .flash-prompt-container {
-    padding: 10px 0 6px 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 24px 0 16px 0;
+    text-align: center;
   }
 
   .flash-target-word {
-    font-size: 26px;
-    margin-bottom: 4px;
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .flash-pos-pill {
+    font-size: 11.5px;
+    padding: 2px 10px;
+    margin-bottom: 8px;
   }
 
   .tc-sentence {
-    font-size: 15px;
-    line-height: 1.5;
-    margin-bottom: 10px;
+    font-size: 15.5px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    color: var(--text-title);
+  }
+
+  .tc-blank {
+    min-width: 85px;
+    padding: 2px 8px;
+    font-size: 14px;
   }
 
   .speed-match-container {
+    flex: 1;
+    display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
+    margin-top: 10px;
+    min-height: 0;
   }
 
   .speed-column {
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    justify-content: space-between;
   }
 
   .speed-match-card {
-    min-height: 50px;
-    padding: 8px 10px;
+    flex: 1;
+    min-height: 60px;
+    padding: 10px 10px;
     gap: 8px;
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-md);
   }
 
   .speed-match-card .keycap {
@@ -123,12 +301,114 @@
   }
 
   .speed-card-text {
-    font-size: 12px;
+    font-size: 12.5px;
     line-height: 1.35;
   }
 
   .speed-card-text.word-title {
-    font-size: 14px;
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+
+  /* Single-column options on mobile: ergonomic thumb positioning at bottom */
+  .options-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: auto;
+    width: 100%;
+  }
+
+  .options-grid.single-column {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: auto;
+    width: 100%;
+  }
+
+  .option-card {
+    min-height: 52px;
+    padding: 12px 14px;
+    gap: 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .option-card-label {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .option-card-gloss {
+    font-size: 12px;
+  }
+
+  .keycap {
+    min-width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  /* When rationale/feedback is active, allow question-card to shrink naturally so rationale flows underneath */
+  .question-viewport:has(.rationale-container),
+  .question-viewport.has-rationale {
+    min-height: auto;
+  }
+
+  .question-viewport:has(.rationale-container) .question-card,
+  .question-viewport.has-rationale .question-card {
+    flex: 0 0 auto;
+    margin-bottom: 12px;
+  }
+
+  .question-viewport:has(.rationale-container) .options-grid,
+  .question-viewport.has-rationale .options-grid {
+    margin-top: 12px !important;
+  }
+
+  .question-viewport:has(.rationale-container) .flash-prompt-container,
+  .question-viewport.has-rationale .flash-prompt-container {
+    flex: 0 0 auto;
+    padding: 14px 0 8px 0;
+  }
+
+  /* Compact Rationale & Feedback Layout */
+  .rationale-container {
+    margin-top: 8px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .rationale-header {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    gap: 6px;
+  }
+
+  .rationale-title {
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .rationale-clue-box {
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .rationale-clue-label {
+    font-size: 10px;
+    margin-bottom: 1px;
+  }
+
+  .rationale-text {
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+
+  .vocab-lookup-grid {
+    gap: 5px;
+    margin-top: 6px;
   }
 
   .vocab-lookup-item {
@@ -136,18 +416,26 @@
     grid-template-columns: auto auto 1fr;
     gap: 4px 8px;
     align-items: baseline;
-    padding: 8px 10px;
+    padding: 6px 8px;
+  }
+
+  .lookup-word-row {
+    grid-column: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
   .lookup-word {
-    grid-column: 1;
     min-width: auto;
     font-size: 14px;
+    font-weight: 700;
   }
 
   .lookup-pos {
     grid-column: 2;
     min-width: auto;
+    font-size: 11px;
   }
 
   .lookup-vi {
@@ -170,46 +458,15 @@
     font-size: 13px;
   }
 
-  .options-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .options-grid.single-column {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .option-card {
-    min-height: 44px;
-    padding: 8px 12px;
-    gap: 8px;
-  }
-
-  .option-card-label {
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .option-card-gloss {
-    font-size: 11px;
-  }
-
-  .keycap {
-    min-width: 24px;
-    height: 24px;
-    font-size: 11px;
-  }
-
   .summary-stats-grid {
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Full-width in-flow continue button - never overlays or clips content */
+  /* Full-width in-flow continue button */
   .session-footer-bar {
     position: static;
-    margin-top: 14px;
-    margin-bottom: 8px;
+    margin-top: 10px;
+    margin-bottom: 4px;
     padding: 0;
     background: transparent;
     border: none;
@@ -219,16 +476,83 @@
 
   .session-footer-bar .btn-primary {
     width: 100%;
-    height: 46px;
+    height: 44px;
     font-size: 15px;
     font-weight: 600;
   }
 
-  .session-progress-header {
-    padding: 10px 14px;
+  /* --------------------------------------------------------------------------
+     Dashboard / Home Page Mobile View Enhancements (Prevent Clipping)
+     -------------------------------------------------------------------------- */
+  .dashboard-container {
+    padding: 14px 12px 28px 12px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
-  .session-progress-track {
-    margin: 0 10px;
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 16px;
+    width: 100%;
+  }
+
+  .dashboard-title-group h1 {
+    font-size: 22px;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+
+  .dashboard-title-group p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .dashboard-actions {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .dashboard-actions .btn-primary,
+  .dashboard-actions .btn-secondary {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .word-table-container {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+  }
+
+  .word-table {
+    min-width: 520px;
+  }
+
+  .word-table th,
+  .word-table td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .table-word-cell {
+    font-size: 14px;
+    gap: 4px;
+  }
+
+  .table-word-cell .audio-btn {
+    width: 24px;
+    height: 24px;
+    padding: 2px;
   }
 }

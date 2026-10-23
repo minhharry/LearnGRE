@@ -422,7 +422,7 @@ export function applyStreakAccent(streak) {
 /**
  * Renders Session Progress Header with correct / incorrect segment status.
  */
-export function renderSessionProgressHeader({ current, total, isRedemption, streak, results = [] }) {
+export function renderSessionProgressHeader({ current, total, isRedemption, streak, results = [], theme = 'dark' }) {
   const progressHeader = document.getElementById('session-progress-header');
   if (!progressHeader) return;
 
@@ -444,19 +444,21 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
     segmentsHtml += `<div class="progress-segment ${statusClass}" id="seg-${i}"></div>`;
   }
 
+  const isDark = theme === 'dark';
+
   progressHeader.innerHTML = `
     <div class="session-progress-left">
-      <span class="session-type-badge">${isRedemption ? 'Gỡ lỗi (Redemption)' : 'Phiên học'}</span>
+      <button id="session-home-btn" class="session-home-btn brand-logo-icon" title="Quay lại trang chủ" aria-label="Quay lại trang chủ">G</button>
+      ${isRedemption ? '<span class="badge badge-amber" style="font-size: 10.5px;">Gỡ lỗi</span>' : ''}
       <span class="session-counter-text">Câu ${current}/${total}</span>
     </div>
     <div class="session-progress-track">
       ${segmentsHtml}
     </div>
     <div class="session-progress-right">
-      <div class="streak-chip ${streak >= 5 ? 'streak-active' : ''}">
-        ${ICONS.streak}
-        <span>Streak ${streak}</span>
-      </div>
+      <button id="session-theme-btn" class="icon-btn session-theme-toggle" title="${isDark ? 'Giao diện Sáng' : 'Giao diện Tối'}">
+        ${isDark ? ICONS.sun : ICONS.moon}
+      </button>
       <button id="btn-exit-session" class="icon-btn" title="Thoát phiên (Esc)">
         ${ICONS.close}
       </button>
@@ -621,7 +623,7 @@ export function renderFlashRecallQuestion({
     <div class="question-viewport animate-fade-in">
       <div class="question-card">
         <div class="question-card-meta">
-          <span class="question-domain-tag">Flash Recall (Trắc nghiệm nghĩa nhanh)</span>
+          <span class="question-domain-tag">Flash Recall</span>
           <div class="question-card-actions">
             <button id="btn-flash-audio" class="action-chip-btn" title="Phát âm (P)">
               ${ICONS.audio} <span>Nghe (P)</span>
@@ -639,7 +641,7 @@ export function renderFlashRecallQuestion({
           </div>
         </div>
 
-        <div class="options-grid single-column" id="flash-options-container" style="margin-top: 12px;">
+        <div class="options-grid single-column" id="flash-options-container">
           ${question.options
             .map(
               (opt) => `
@@ -723,7 +725,7 @@ export function renderTcQuestion({
         <div class="question-card-meta">
           <span class="question-domain-tag">${question.domain}</span>
           <div class="question-card-actions">
-            <button id="btn-tc-audio" class="action-chip-btn" title="Phát âm từ đúng (P)">
+            <button id="btn-tc-audio" class="action-chip-btn" style="display: none;" title="Phát âm từ đúng (P)">
               ${ICONS.audio} <span>Nghe (P)</span>
             </button>
             <button id="btn-tc-flag" class="action-chip-btn ${isFlagged ? 'flagged' : ''}" title="Ghi vào Sổ tay câu sai (S)">
@@ -736,15 +738,15 @@ export function renderTcQuestion({
           ${formattedSentence}
         </div>
 
-        <div class="options-grid" id="tc-options-container" style="margin-top: 12px;">
+        <div class="options-grid" id="tc-options-container">
           ${question.options
             .map(
               (opt) => `
             <div class="option-card" data-key="${opt.keycap}" data-word="${opt.word}" data-correct="${opt.isCorrect}">
               <span class="keycap">${opt.keycap}</span>
-              <div>
-                <div class="option-card-label">${opt.word}</div>
-                <div class="option-card-gloss">${opt.pos}</div>
+              <div class="option-card-text">
+                <span class="option-card-label">${opt.word}</span>
+                <span class="option-card-gloss">${opt.pos}</span>
               </div>
             </div>
           `
@@ -769,6 +771,15 @@ export function renderTcQuestion({
   const handleSelection = (selectedEl) => {
     if (answered) return;
     answered = true;
+
+    // Reveal audio pronunciation button now that question has been answered
+    const audioBtn = document.getElementById('btn-tc-audio');
+    if (audioBtn) {
+      audioBtn.style.display = 'inline-flex';
+      audioBtn.title = `Phát âm: ${question.correctWord} (P)`;
+      const span = audioBtn.querySelector('span');
+      if (span) span.textContent = `Nghe (${question.correctWord}) (P)`;
+    }
 
     // Lock options
     stage.querySelectorAll('.option-card').forEach((c) => c.classList.add('locked'));
@@ -813,6 +824,9 @@ export function renderTcRationale({ question, isCorrect, onContinue }) {
   const container = document.getElementById('tc-rationale-placeholder');
   if (!container) return;
 
+  const viewport = document.querySelector('.question-viewport');
+  if (viewport) viewport.classList.add('has-rationale');
+
   const statusBadge = typeof isCorrect === 'boolean'
     ? (isCorrect
         ? `<span class="badge badge-green">Chính xác!</span>`
@@ -827,6 +841,9 @@ export function renderTcRationale({ question, isCorrect, onContinue }) {
           ${statusBadge}
           <span>Phân tích Ngữ cảnh</span>
           <span class="badge badge-green" style="margin-left: 6px;">Đáp án: ${question.correctWord}</span>
+          <button id="btn-tc-rationale-audio" class="action-chip-btn" style="margin-left: 6px; padding: 2px 8px;" title="Nghe phát âm: ${question.correctWord}">
+            ${ICONS.audio} <span>Nghe</span>
+          </button>
         </div>
       </div>
 
@@ -848,7 +865,12 @@ export function renderTcRationale({ question, isCorrect, onContinue }) {
           .map(
             (opt) => `
           <div class="vocab-lookup-item ${opt.isCorrect ? 'highlight-correct' : ''}">
-            <span class="lookup-word">${opt.word}</span>
+            <div class="lookup-word-row">
+              <span class="lookup-word">${opt.word}</span>
+              <button class="lookup-audio-btn" data-word="${opt.word}" title="Nghe phát âm: ${opt.word}">
+                ${ICONS.audio}
+              </button>
+            </div>
             <span class="lookup-pos">${opt.pos}</span>
             <span class="lookup-vi">${opt.vi_gloss || ''}</span>
             <span class="lookup-en">${opt.definition || ''}</span>
@@ -867,6 +889,15 @@ export function renderTcRationale({ question, isCorrect, onContinue }) {
   `;
 
   document.getElementById('btn-tc-continue')?.addEventListener('click', onContinue);
+  document.getElementById('btn-tc-rationale-audio')?.addEventListener('click', () => {
+    playPronunciation(question.correctWord);
+  });
+  container.querySelectorAll('.lookup-audio-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playPronunciation(btn.dataset.word);
+    });
+  });
 
   // Smooth scroll so explanation starts cleanly in view without clipping top or bottom
   setTimeout(() => {
@@ -885,6 +916,9 @@ export function renderFlashFeedback({ question, isCorrect = false, onContinue })
   const container = document.getElementById('flash-feedback-placeholder');
   if (!container) return;
 
+  const viewport = document.querySelector('.question-viewport');
+  if (viewport) viewport.classList.add('has-rationale');
+
   const statusBadge = isCorrect
     ? `<span class="badge badge-green">Chính xác!</span>`
     : `<span class="badge badge-red">Chưa chính xác</span>`;
@@ -902,7 +936,12 @@ export function renderFlashFeedback({ question, isCorrect = false, onContinue })
 
       <div class="vocab-lookup-grid">
         <div class="vocab-lookup-item highlight-correct">
-          <span class="lookup-word">${question.targetWord.word}</span>
+          <div class="lookup-word-row">
+            <span class="lookup-word">${question.targetWord.word}</span>
+            <button class="lookup-audio-btn" data-word="${question.targetWord.word}" title="Nghe phát âm: ${question.targetWord.word}">
+              ${ICONS.audio}
+            </button>
+          </div>
           <span class="lookup-pos">${question.targetWord.pos}</span>
           <span class="lookup-vi">${question.targetWord.vi_gloss}</span>
           <span class="lookup-en">${(question.targetWord.definitions && question.targetWord.definitions[0]) || ''}</span>
@@ -918,6 +957,12 @@ export function renderFlashFeedback({ question, isCorrect = false, onContinue })
   `;
 
   document.getElementById('btn-flash-continue')?.addEventListener('click', onContinue);
+  container.querySelectorAll('.lookup-audio-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playPronunciation(btn.dataset.word);
+    });
+  });
 
   setTimeout(() => {
     const mainStage = document.getElementById('main-stage');
