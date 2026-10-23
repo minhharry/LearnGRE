@@ -151,6 +151,58 @@ export function exportProgressJson(data) {
 }
 
 /**
+ * Encodes progress data to a compact base64-encoded gzip string.
+ * Data -> JSON -> Gzip (CompressionStream) -> Base64
+ */
+export async function encodeProgressCode(data) {
+  data.last_backup = new Date().toISOString();
+  saveProgressData(data);
+
+  const jsonString = JSON.stringify(data);
+  const stream = new Blob([jsonString]).stream().pipeThrough(new CompressionStream('gzip'));
+  const compressedBuffer = await new Response(stream).arrayBuffer();
+  const bytes = new Uint8Array(compressedBuffer);
+
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Decodes progress data from a base64-encoded gzip string.
+ * Base64 -> Gzip bytes -> Decompress (DecompressionStream) -> JSON -> Data
+ */
+export async function decodeProgressCode(base64Code) {
+  try {
+    const cleanCode = (base64Code || '').trim();
+    if (!cleanCode) {
+      throw new Error('Mã chia sẻ không được để trống.');
+    }
+    const binary = atob(cleanCode);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const decompressedText = await new Response(stream).text();
+    const parsed = JSON.parse(decompressedText);
+    if (!parsed || typeof parsed !== 'object' || !parsed.words) {
+      throw new Error('Dữ liệu không đúng định dạng: thiếu danh sách từ.');
+    }
+    parsed.version = '4.0';
+    parsed.last_backup = new Date().toISOString();
+    saveProgressData(parsed);
+    return { success: true, data: parsed };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Imports progress data from JSON file content.
  */
 export function importProgressJson(jsonString) {

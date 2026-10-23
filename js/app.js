@@ -10,6 +10,8 @@ import {
   isBackupDue,
   exportProgressJson,
   importProgressJson,
+  encodeProgressCode,
+  decodeProgressCode,
 } from './storage.js';
 import { evaluateWordAnswer } from './srs.js';
 import { SessionManager } from './session.js';
@@ -508,6 +510,55 @@ class AppController {
         }
       };
       reader.readAsText(file);
+    });
+
+    // Share Profile via Code (Gzip Base64)
+    const codeArea = document.getElementById('profile-code-area');
+    document.getElementById('btn-export-code')?.addEventListener('click', async () => {
+      try {
+        const encoded = await encodeProgressCode(this.storageData);
+        if (codeArea) {
+          codeArea.value = encoded;
+          codeArea.select();
+        }
+        renderTopBar(this.storageData, false);
+      } catch (err) {
+        alert('Không thể tạo mã sao lưu: ' + err.message);
+      }
+    });
+
+    document.getElementById('btn-copy-code')?.addEventListener('click', async () => {
+      const code = codeArea?.value?.trim();
+      if (!code) {
+        alert('Chưa có mã để sao chép. Vui lòng bấm "Tạo mã sao lưu" trước.');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(code);
+        alert('Đã sao chép mã vào clipboard!');
+      } catch (err) {
+        codeArea.select();
+        document.execCommand('copy');
+        alert('Đã sao chép mã!');
+      }
+    });
+
+    document.getElementById('btn-import-code')?.addEventListener('click', async () => {
+      const code = codeArea?.value?.trim();
+      if (!code) {
+        alert('Vui lòng dán mã sao lưu vào khung trước khi khôi phục.');
+        return;
+      }
+      const res = await decodeProgressCode(code);
+      if (res.success) {
+        this.storageData = res.data;
+        this.renderSidebar();
+        this.renderCurrentView();
+        backupModal.classList.remove('active');
+        alert('Khôi phục dữ liệu tiến độ từ mã thành công!');
+      } else {
+        alert('Lỗi mã sao lưu: ' + res.error);
+      }
     });
 
     // Responsive Drawer Toggle
