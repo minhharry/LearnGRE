@@ -682,6 +682,11 @@ export function renderFlashRecallQuestion({
     onToggleFlag();
   });
 
+  // Tự động phát âm từ vựng khi vào câu Flash Recall
+  if (question.promptWord) {
+    playPronunciation(question.promptWord);
+  }
+
   let answered = false;
 
   const handleSelection = (selectedEl) => {
@@ -925,6 +930,11 @@ export function renderTcRationale({ question, isCorrect, chosenWord, onContinue 
       playPronunciation(btn.dataset.word);
     });
   });
+
+  // Tự động phát âm từ đáp án đúng khi hiển thị phân tích/đáp án câu TC
+  if (question.correctWord) {
+    playPronunciation(question.correctWord);
+  }
 
   // Smooth scroll so explanation starts cleanly in view without clipping top or bottom
   setTimeout(() => {
