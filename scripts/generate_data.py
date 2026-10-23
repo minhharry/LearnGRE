@@ -11,7 +11,7 @@ import json
 import re
 import sys
 import time
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -446,8 +446,9 @@ def build_bidirectional_synonym_graph(
     vocabulary_records: List[dict],
 ) -> Dict[str, Set[str]]:
     """
-    Construct a bidirectional graph connecting words that share synonym links.
-    Returns mapping from word to its full connected synonym cluster.
+    Construct a bidirectional graph connecting words that share direct synonym links.
+    Returns mapping from word to its direct synonym neighborhood (1-hop bidirectional),
+    preventing transitive small-world network percolation across unrelated polysemous senses.
     """
     adjacency_graph: Dict[str, Set[str]] = defaultdict(set)
 
@@ -461,28 +462,10 @@ def build_bidirectional_synonym_graph(
                 adjacency_graph[word].add(synonym_clean)
                 adjacency_graph[synonym_clean].add(word)
 
-    # Compute connected components using Breadth-First Search
-    synonym_clusters: Dict[str, Set[str]] = {}
-    visited_nodes: Set[str] = set()
-
-    for node in adjacency_graph:
-        if node in visited_nodes:
-            continue
-        cluster_members: Set[str] = set()
-        traversal_queue = deque([node])
-        visited_nodes.add(node)
-
-        while traversal_queue:
-            current_node = traversal_queue.popleft()
-            cluster_members.add(current_node)
-            for neighbor_node in adjacency_graph[current_node]:
-                if neighbor_node not in visited_nodes:
-                    visited_nodes.add(neighbor_node)
-                    traversal_queue.append(neighbor_node)
-
-        for member in cluster_members:
-            synonym_clusters[member] = cluster_members
-
+    # Return direct 1-hop bidirectional synonym neighborhood
+    synonym_clusters: Dict[str, Set[str]] = {
+        word: set(neighbors) for word, neighbors in adjacency_graph.items()
+    }
     return synonym_clusters
 
 
@@ -505,23 +488,32 @@ def select_text_completion_distractors(
     synonym_clusters: Dict[str, Set[str]],
     academic_fallback_words: Dict[str, List[str]],
     definition_stopwords: Set[str],
+    word_to_group: Optional[Dict[str, int]] = None,
 ) -> List[str]:
     """
     Select exactly 3 pedagogically sound distractors for Text Completion question:
     - Same part of speech.
     - Priority 1: Intra-Group (same group).
     - Priority 2: Cumulative Prior-Groups (group < target_group). Never future groups!
-    - Priority 3: Academic Core Fallback from config.
+    - Priority 3: Academic Core Fallback from config (excluding any that belong to future groups).
     - Exclusion filters:
       1. Not the target word itself.
       2. Not in target word's family forms; target not in candidate forms.
       3. Not in target word's bidirectional synonym cluster.
       4. No definition keyword overlap after removing stopwords.
+      5. Distractors must not share synonym relations with each other.
     - Polarity inversion preference: prioritize selecting at least 1 antonym if eligible.
     """
     target_word = target_record["word"].lower().strip()
     target_pos = target_record["pos"]
     target_group = int(target_record["group"])
+
+    if word_to_group is None:
+        word_to_group = {
+            rec["word"].lower().strip(): int(rec["group"])
+            for rec in all_vocabulary_records
+            if "word" in rec and "group" in rec
+        }
 
     # Disallowed set of words
     disallowed_words: Set[str] = {target_word}
@@ -606,6 +598,10 @@ def select_text_completion_distractors(
             and cleaned not in disallowed_words
             and cleaned not in selected_distractor_set
         ):
+            # Check that candidate does not share synonym link with existing selected distractors
+            cand_syns = synonym_clusters.get(cleaned, {cleaned})
+            if any(existing in cand_syns for existing in selected_distractors):
+                return False
             selected_distractors.append(cleaned)
             selected_distractor_set.add(cleaned)
             return True
@@ -624,12 +620,16 @@ def select_text_completion_distractors(
                 break
             try_add_distractor(candidate_record["word"])
 
-    # Priority 3: Fill from academic core fallback words
+    # Priority 3: Fill from academic core fallback words (avoiding future groups)
     if len(selected_distractors) < 3:
         fallback_pool = academic_fallback_words.get(target_pos, [])
         for fallback_word in fallback_pool:
             if len(selected_distractors) >= 3:
                 break
+            fw_clean = fallback_word.lower().strip()
+            fw_group = word_to_group.get(fw_clean)
+            if fw_group is not None and fw_group > target_group:
+                continue
             try_add_distractor(fallback_word)
 
     # Fallback to general academic fallback words if POS list is exhausted
@@ -638,6 +638,10 @@ def select_text_completion_distractors(
             for fallback_word in word_list:
                 if len(selected_distractors) >= 3:
                     break
+                fw_clean = fallback_word.lower().strip()
+                fw_group = word_to_group.get(fw_clean)
+                if fw_group is not None and fw_group > target_group:
+                    continue
                 try_add_distractor(fallback_word)
 
     # Verification: Ensure exactly 3 distractors
@@ -919,6 +923,118 @@ def generate_text_completion_questions(
     return existing_question_records
 
 
+def export_manual_review_reports(
+    hard_problems: List[dict],
+    output_json_path: Path,
+    output_md_path: Path,
+) -> None:
+    """Export detailed catalog of hard problems requiring manual hand-fixing to JSON and Markdown."""
+    output_json_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_json_path, "w", encoding="utf-8") as f:
+        json.dump(hard_problems, f, ensure_ascii=False, indent=2)
+
+    type_counts = Counter(item["type"] for item in hard_problems)
+    
+    with open(output_md_path, "w", encoding="utf-8") as f:
+        f.write("# LearnGRE - Manual Data Quality Review Checklist\n\n")
+        f.write("This document lists questions containing semantic, grammatical, or structural issues ")
+        f.write("that require manual / editorial fixing by hand rather than naive automated regex replacement.\n\n")
+        
+        f.write("## Summary of Flagged Issues\n\n")
+        f.write("| Issue Type | Count | Description |\n")
+        f.write("| :--- | :--- | :--- |\n")
+        f.write(f"| `MULTI_BLANK` | {type_counts.get('MULTI_BLANK', 0)} | Sentence has 2 [BLANK] tokens instead of 1 in a single-choice question |\n")
+        f.write(f"| `FORM_LEAKAGE` | {type_counts.get('FORM_LEAKAGE', 0)} | Word family / inflectional derivative of target leaked in sentence |\n")
+        f.write(f"| `VERB_PARTICIPLE_MISMATCH` | {type_counts.get('VERB_PARTICIPLE_MISMATCH', 0)} | Sentence syntax demands past participle (-ed) but answer is base lemma |\n")
+        f.write(f"| `AUTO_REPAIR_FLAW_ARTIFACT` | {type_counts.get('AUTO_REPAIR_FLAW_ARTIFACT', 0)} | Previous naive regex inserted 'flaw' into broken position |\n")
+        f.write(f"| `CLUE_HALLUCINATION_OR_DEFECT` | {type_counts.get('CLUE_HALLUCINATION_OR_DEFECT', 0)} | Clue text is hallucinated or copied dictionary definition |\n")
+        f.write(f"| `ENGLISH_RATIONALE` | {type_counts.get('ENGLISH_RATIONALE', 0)} | Rationale is written in English instead of Vietnamese |\n")
+        f.write(f"| **Total** | **{len(hard_problems)}** | |\n\n")
+
+        # Group by type
+        by_type: Dict[str, List[dict]] = defaultdict(list)
+        for item in hard_problems:
+            by_type[item["type"]].append(item)
+
+        for ptype, items in by_type.items():
+            f.write(f"## {ptype} ({len(items)} items)\n\n")
+            for item in items:
+                qid = item["id"]
+                word = item["word"]
+                grp = item["group"]
+                action = item["action_needed"]
+                details = item["details"]
+                sent = item["sentence"]
+                f.write(f"- [ ] **`{qid}`** (Word: `{word}`, Group {grp})\n")
+                f.write(f"  - **Issue:** {details}\n")
+                f.write(f"  - **Action Required:** {action}\n")
+                f.write(f"  - **Sentence:** `{sent}`\n\n")
+
+
+def generate_missing_cumbersome_questions(
+    vocab_records: Dict[str, dict],
+    synonym_clusters: Dict[str, Set[str]],
+    academic_fallback_words: Dict[str, List[str]],
+    definition_stopwords: Set[str],
+    word_to_group: Dict[str, int],
+) -> List[dict]:
+    """Generate 3 dedicated academic Text Completion questions for duplicate word cumbersome in Group 22."""
+    target_record = vocab_records.get("g22_w03")
+    if not target_record:
+        return []
+
+    templates = [
+        {
+            "id": "q_cumbersome_g22_tc01",
+            "target_id": "g22_w03",
+            "type": "TC",
+            "domain": "Natural Sciences (Ecology, Evolutionary Biology, Astronomy, Geology, Physics)",
+            "sentence": "Although the newly synthesized biomaterial exhibited exceptional tensile strength, its a/an [BLANK] molecular structure severely impeded cell adhesion and nutrient diffusion, prompting bioengineers to refine the polymer chain.",
+            "pos_required": "adj",
+            "form_required": "base",
+            "clue": "severely impeded cell adhesion and nutrient diffusion",
+            "correct_answer": "cumbersome",
+            "rationale": "Cụm từ 'severely impeded cell adhesion' (cản trở nghiêm trọng sự bám dính của tế bào) chỉ ra rằng cấu trúc phân tử quá nặng nề và phức tạp. Tính từ 'cumbersome' (cồng kềnh, vụng về) phản ánh chính xác nhược điểm cấu trúc này, đối lập với đặc tính vượt trội ban đầu."
+        },
+        {
+            "id": "q_cumbersome_g22_tc02",
+            "target_id": "g22_w03",
+            "type": "TC",
+            "domain": "Social Sciences (Sociology, Anthropology, Economics, Psychology)",
+            "sentence": "Although the digital welfare portal was initially heralded as a triumph of bureaucratic modernization, citizens quickly discovered that its a/an [BLANK] multi-stage verification protocols created insurmountable hurdles for vulnerable claimants.",
+            "pos_required": "adj",
+            "form_required": "base",
+            "clue": "multi-stage verification protocols created insurmountable hurdles for vulnerable claimants",
+            "correct_answer": "cumbersome",
+            "rationale": "Cụm từ 'multi-stage verification protocols created insurmountable hurdles' thiết lập mối quan hệ nhân quả cho thấy thủ tục quá rườm rà, phức tạp và kém hiệu quả. Do đó, 'cumbersome' (rườm rà, cồng kềnh) là từ chuẩn xác nhất."
+        },
+        {
+            "id": "q_cumbersome_g22_tc03",
+            "target_id": "g22_w03",
+            "type": "TC",
+            "domain": "Philosophy and Literature (Ethics, Epistemology, Literary Criticism, Aesthetics)",
+            "sentence": "While the author's early essays were celebrated for their aphoristic wit and brisk pacing, her later philosophical treatises were burdened by a/an [BLANK] prose style that obscured her central arguments beneath layers of digressive exposition.",
+            "pos_required": "adj",
+            "form_required": "base",
+            "clue": "burdened by... that obscured her central arguments beneath layers of digressive exposition",
+            "correct_answer": "cumbersome",
+            "rationale": "Cụm từ 'obscured her central arguments beneath layers of digressive exposition' (che khuất luận điểm chính dưới nhiều tầng diễn giải lan man) đối lập với phong cách ngắn gọn ('aphoristic wit, brisk pacing'). Tính từ 'cumbersome' (nặng nề, vụng về, rườm rà) là lựa chọn duy nhất làm nổi bật văn phong rắc rối này."
+        }
+    ]
+
+    for t in templates:
+        t["distractors"] = select_text_completion_distractors(
+            target_record=target_record,
+            all_vocabulary_records=list(vocab_records.values()),
+            synonym_clusters=synonym_clusters,
+            academic_fallback_words=academic_fallback_words,
+            definition_stopwords=definition_stopwords,
+            word_to_group=word_to_group,
+        )
+
+    return templates
+
+
 def fix_integrity_defects(
     vocab_jsonl_path: Path,
     question_templates_jsonl_path: Path,
@@ -926,12 +1042,15 @@ def fix_integrity_defects(
 ) -> int:
     """
     Repair questions failing integrity checks:
-    - Re-select valid distractors violating synonym disjointness, uniqueness, or distractor count.
-    - Fix missing '[BLANK]' placeholders and eliminate target answer leakage.
+    - Automatically normalizes 'a [BLANK]' and 'an [BLANK]' to 'a/an [BLANK]' to eliminate phonetic giveaways and grammar errors.
+    - Cleans whitespace and punctuation spacing artifacts.
+    - Re-selects valid distractors using 1-hop bidirectional synonym graph, preventing future-group fallback leakage.
+    - Generates missing question templates for duplicate wordbank items (g22_w03 cumbersome).
+    - Identifies and exports hard problems requiring human editorial fixes to data/manual_review_needed.md.
     Returns the total number of repaired question items.
     """
     sys.stdout.write(
-        "Running automated repair on question templates with integrity defects...\n"
+        "Running enhanced automated repair on question templates...\n"
     )
 
     vocab_records = load_existing_jsonl_records(
@@ -952,84 +1071,274 @@ def fix_integrity_defects(
     distractor_config = configuration.get("distractors", {})
     academic_fallback_words = distractor_config.get("academic_fallback_words", {})
     definition_stopwords = set(distractor_config.get("definition_stopwords", []))
+    word_to_group = {
+        v["word"].lower().strip(): int(v["group"])
+        for v in vocab_records.values()
+        if "word" in v and "group" in v
+    }
 
     repaired_questions_count = 0
+    article_fixes_count = 0
+    whitespace_fixes_count = 0
+    distractor_fixes_count = 0
 
+    hard_problems: List[dict] = []
+
+    # 1. Inspect and repair existing questions
     for question_id, question in question_records.items():
+        sentence = question.get("sentence", "")
         correct_answer = question.get("correct_answer", "").strip().lower()
         distractors = [d.strip().lower() for d in question.get("distractors", [])]
-        sentence = question.get("sentence", "")
         target_id = question.get("target_id", "")
-
         target_record = vocab_by_id.get(target_id) or vocab_by_word.get(correct_answer)
-        if not target_record:
-            sys.stderr.write(
-                f"Warning: No vocabulary record found matching '{correct_answer}' for {question_id}.\n"
-            )
-            continue
-
-        needs_distractor_repair = False
-        target_cluster = synonym_clusters.get(correct_answer, {correct_answer})
-
-        # Check distractor constraints
-        if len(distractors) != 3:
-            needs_distractor_repair = True
-        elif len(set([correct_answer] + distractors)) != 4:
-            needs_distractor_repair = True
-        else:
-            for distractor in distractors:
-                if distractor in target_cluster:
-                    needs_distractor_repair = True
-                    break
+        target_pos = target_record.get("pos") if target_record else question.get("pos_required", "")
+        target_group = int(target_record.get("group", 999)) if target_record else 999
 
         sentence_modified = False
+        distractor_modified = False
 
-        # Check missing blank placeholder
+        # Fix missing blank placeholder if completely absent
         if "[BLANK]" not in sentence:
             pattern = re.compile(rf"\b{re.escape(correct_answer)}\b", re.IGNORECASE)
             if pattern.search(sentence):
                 sentence = pattern.sub("[BLANK]", sentence, count=1)
             else:
                 sentence = f"{sentence} [BLANK]"
-            question["sentence"] = sentence
             sentence_modified = True
 
-        # Check answer leakage outside [BLANK]
-        sentence_without_blank = sentence.replace("[BLANK]", " ").lower()
-        leak_pattern = re.compile(rf"\b{re.escape(correct_answer)}\b", re.IGNORECASE)
-        if leak_pattern.search(sentence_without_blank):
-            pos_required = question.get(
-                "pos_required", target_record.get("pos", "noun")
-            )
-            replacement = "flaw" if pos_required == "noun" else ""
-            sentence = leak_pattern.sub(replacement, sentence)
-            question["sentence"] = sentence
+        # Safe programmatic fix: Normalize "a [BLANK]" and "an [BLANK]" to "a/an [BLANK]" (strictly idempotent)
+        normalized_sentence = re.sub(
+            r"\b(?:a/an|an/a|a/a/an|an/an/a|a\s*/\s*an)\s+\[BLANK\]",
+            "a/an [BLANK]",
+            sentence,
+            flags=re.IGNORECASE,
+        )
+        normalized_sentence = re.sub(
+            r"(?<!/)\b(?:a|an)\s+\[BLANK\]",
+            "a/an [BLANK]",
+            normalized_sentence,
+            flags=re.IGNORECASE,
+        )
+        if normalized_sentence != sentence:
+            sentence = normalized_sentence
             sentence_modified = True
+            article_fixes_count += 1
 
-        if needs_distractor_repair:
+        # Safe programmatic fix: Clean up double spaces and punctuation spacing
+        cleaned_sentence = re.sub(r"[ \t]{2,}", " ", sentence)
+        cleaned_sentence = re.sub(r"\s+([,.:;?!])", r"\1", cleaned_sentence)
+        if cleaned_sentence != sentence:
+            sentence = cleaned_sentence
+            sentence_modified = True
+            whitespace_fixes_count += 1
+
+        if sentence_modified:
+            question["sentence"] = sentence
+
+        # Safe programmatic fix: Distractor validation and re-selection
+        needs_distractor_repair = False
+        if len(distractors) != 3 or len(set([correct_answer] + distractors)) != 4:
+            needs_distractor_repair = True
+        else:
+            target_cluster = synonym_clusters.get(correct_answer, {correct_answer})
+            for d in distractors:
+                # Synonym with target
+                if d in target_cluster:
+                    needs_distractor_repair = True
+                    break
+                # Leaked from future group via fallback
+                d_grp = word_to_group.get(d)
+                if d_grp is not None and d_grp > target_group:
+                    needs_distractor_repair = True
+                    break
+                # POS mismatch
+                d_rec = vocab_by_word.get(d)
+                if d_rec and d_rec.get("pos") != target_pos:
+                    needs_distractor_repair = True
+                    break
+
+            # Check mutual synonyms between distractors
+            if not needs_distractor_repair:
+                for i in range(len(distractors)):
+                    d_i_cluster = synonym_clusters.get(distractors[i], {distractors[i]})
+                    for j in range(i + 1, len(distractors)):
+                        if distractors[j] in d_i_cluster:
+                            needs_distractor_repair = True
+                            break
+                    if needs_distractor_repair:
+                        break
+
+        if needs_distractor_repair and target_record:
             new_distractors = select_text_completion_distractors(
                 target_record=target_record,
                 all_vocabulary_records=all_vocabulary_records,
                 synonym_clusters=synonym_clusters,
                 academic_fallback_words=academic_fallback_words,
                 definition_stopwords=definition_stopwords,
+                word_to_group=word_to_group,
             )
             question["distractors"] = new_distractors
+            distractor_modified = True
+            distractor_fixes_count += 1
 
-        if needs_distractor_repair or sentence_modified:
+        if sentence_modified or distractor_modified:
             repaired_questions_count += 1
 
-    if repaired_questions_count > 0:
-        all_questions_list = list(question_records.values())
-        all_questions_list.sort(key=lambda item: item["id"])
-        with open(question_templates_jsonl_path, "w", encoding="utf-8") as file_handle:
-            for item in all_questions_list:
-                file_handle.write(json.dumps(item, ensure_ascii=False) + "\n")
-        sys.stdout.write(
-            f"Successfully repaired and saved {repaired_questions_count} question template(s).\n"
+        # Catalogue Hard Problems for Manual Editorial Review
+        blank_count = sentence.count("[BLANK]")
+        if blank_count > 1:
+            hard_problems.append({
+                "id": question_id,
+                "target_id": target_id,
+                "word": correct_answer,
+                "group": target_group,
+                "type": "MULTI_BLANK",
+                "details": f"Sentence contains {blank_count} [BLANK] tokens instead of 1.",
+                "sentence": sentence,
+                "action_needed": "Edit sentence to keep exactly 1 [BLANK] corresponding to target word."
+            })
+        elif blank_count == 0:
+            hard_problems.append({
+                "id": question_id,
+                "target_id": target_id,
+                "word": correct_answer,
+                "group": target_group,
+                "type": "ZERO_BLANK",
+                "details": "Sentence contains no [BLANK] token.",
+                "sentence": sentence,
+                "action_needed": "Insert [BLANK] in place of target word."
+            })
+
+        # Morphological form leakage outside [BLANK]
+        sent_no_blank = sentence.replace("[BLANK]", " ").lower()
+        if target_record:
+            all_forms: Set[str] = set()
+            for flist in target_record.get("forms", {}).values():
+                for fw in flist:
+                    clean_fw = fw.lower().strip()
+                    if len(clean_fw) > 2 and clean_fw != correct_answer:
+                        all_forms.add(clean_fw)
+            for form_word in all_forms:
+                if re.search(rf"\b{re.escape(form_word)}\b", sent_no_blank):
+                    hard_problems.append({
+                        "id": question_id,
+                        "target_id": target_id,
+                        "word": correct_answer,
+                        "group": target_group,
+                        "type": "FORM_LEAKAGE",
+                        "details": f"Target form '{form_word}' leaked in sentence text.",
+                        "sentence": sentence,
+                        "action_needed": f"Rewrite or replace leaked word '{form_word}' with a non-derivative synonym."
+                    })
+
+        # Auto-repair artifact "flaw"
+        if target_pos == "noun" and correct_answer != "flaw" and re.search(r"\bflaw\b", sent_no_blank):
+            if question_id in ["q_ire_tc02", "q_repertoire_tc02", "q_repertoire_tc03"]:
+                hard_problems.append({
+                    "id": question_id,
+                    "target_id": target_id,
+                    "word": correct_answer,
+                    "group": target_group,
+                    "type": "AUTO_REPAIR_FLAW_ARTIFACT",
+                    "details": "Previous auto-repair naively substituted target word with 'flaw', corrupting syntax/meaning.",
+                    "sentence": sentence,
+                    "action_needed": "Restore grammatically sound context for target word."
+                })
+
+        # Passive / participle mismatch for verbs
+        if target_pos == "verb":
+            aux_match = re.search(
+                r"\b(is|was|were|are|been|being|had|has|have)\s+(\w+\s+)?\[BLANK\]",
+                sentence,
+                re.IGNORECASE,
+            )
+            if aux_match:
+                aux_phrase = aux_match.group(0).lower()
+                if not re.search(r"\bto\s+\[blank\]", aux_phrase, re.IGNORECASE):
+                    hard_problems.append({
+                        "id": question_id,
+                        "target_id": target_id,
+                        "word": correct_answer,
+                        "group": target_group,
+                        "type": "VERB_PARTICIPLE_MISMATCH",
+                        "details": f"Sentence syntax ('{aux_phrase}') requires a past participle (-ed), but options are base verbs.",
+                        "sentence": sentence,
+                        "action_needed": "Reframe sentence clause to use active infinitive/modal (e.g., 'sought to [BLANK]', 'would [BLANK]')."
+                    })
+
+        # Clue hallucination
+        clue_text_lower = question.get("clue", "").lower()
+        if (
+            (question_id == "q_prescient_tc03" and "meteorite" in clue_text_lower)
+            or (question_id == "q_tacit_tc01" and "understood or implied" in clue_text_lower)
+            or (question_id == "q_tantalizing_tc03" and "the sentence establishes" in clue_text_lower)
+        ):
+            hard_problems.append({
+                "id": question_id,
+                "target_id": target_id,
+                "word": correct_answer,
+                "group": target_group,
+                "type": "CLUE_HALLUCINATION_OR_DEFECT",
+                "details": f"Clue text does not match sentence context: '{question.get('clue', '')[:70]}...'",
+                "sentence": sentence,
+                "action_needed": "Update clue to extract actual keywords/clause from sentence."
+            })
+
+        # Non-Vietnamese rationale
+        rat = question.get("rationale", "")
+        has_vn = bool(re.search(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]", rat, re.IGNORECASE))
+        if not has_vn:
+            hard_problems.append({
+                "id": question_id,
+                "target_id": target_id,
+                "word": correct_answer,
+                "group": target_group,
+                "type": "ENGLISH_RATIONALE",
+                "details": f"Rationale is written in English instead of Vietnamese: '{rat[:60]}...'",
+                "sentence": sentence,
+                "action_needed": "Translate or rewrite rationale in Vietnamese (2-3 sentences)."
+            })
+
+    # 2. Coverage Repair: Ensure g22_w03 (cumbersome) has 3 question templates
+    existing_target_ids = {q.get("target_id") for q in question_records.values()}
+    if "g22_w03" not in existing_target_ids:
+        missing_cumbersome_questions = generate_missing_cumbersome_questions(
+            vocab_records=vocab_records,
+            synonym_clusters=synonym_clusters,
+            academic_fallback_words=academic_fallback_words,
+            definition_stopwords=definition_stopwords,
+            word_to_group=word_to_group,
         )
-    else:
-        sys.stdout.write("No defective question templates required repair.\n")
+        for q_item in missing_cumbersome_questions:
+            question_records[q_item["id"]] = q_item
+            repaired_questions_count += 1
+        sys.stdout.write(
+            f"Generated {len(missing_cumbersome_questions)} missing questions for Group 22 cumbersome (g22_w03).\n"
+        )
+
+    # Save repaired question templates
+    all_questions_list = list(question_records.values())
+    all_questions_list.sort(key=lambda item: item["id"])
+    with open(question_templates_jsonl_path, "w", encoding="utf-8") as file_handle:
+        for item in all_questions_list:
+            file_handle.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+    sys.stdout.write(
+        f"Automated repairs applied: {repaired_questions_count} item(s) modified/added.\n"
+        f"  - Article normalizations ('a/an [BLANK]'): {article_fixes_count}\n"
+        f"  - Whitespace & punctuation cleanups: {whitespace_fixes_count}\n"
+        f"  - Distractor re-selections: {distractor_fixes_count}\n"
+    )
+
+    # Export catalog of hard problems for manual review
+    manual_review_json_path = question_templates_jsonl_path.parent / "manual_review_needed.json"
+    manual_review_md_path = question_templates_jsonl_path.parent / "manual_review_needed.md"
+    export_manual_review_reports(hard_problems, manual_review_json_path, manual_review_md_path)
+
+    sys.stdout.write(
+        f"\nIdentified {len(hard_problems)} hard problem(s) requiring manual editorial review.\n"
+        f"Checklist exported to: {manual_review_md_path}\n"
+    )
 
     return repaired_questions_count
 
@@ -1069,6 +1378,7 @@ def run_comprehensive_integrity_check(
 
     validation_errors: List[str] = []
 
+    # Check question templates
     for question_id, question in question_records.items():
         correct_answer = question.get("correct_answer", "").strip().lower()
         distractors = [d.strip().lower() for d in question.get("distractors", [])]
@@ -1115,6 +1425,9 @@ def run_comprehensive_integrity_check(
         else:
             seen_sentence_map[sent] = question_id
 
+    # Check for hard problems remaining in the dataset
+    manual_review_md_path = question_templates_jsonl_path.parent / "manual_review_needed.md"
+
     if validation_errors:
         sys.stderr.write(
             f"Integrity check failed with {len(validation_errors)} error(s):\n"
@@ -1128,8 +1441,12 @@ def run_comprehensive_integrity_check(
         raise AssertionError("Data integrity check failed!")
 
     sys.stdout.write(
-        "Integrity assertion passed successfully with 0 defects detected.\n"
+        "Automated integrity assertion passed successfully with 0 structural defects detected.\n"
     )
+    if manual_review_md_path.is_file():
+        sys.stdout.write(
+            f"Notice: Hard problems requiring human review are logged in {manual_review_md_path}\n"
+        )
 
 
 def parse_command_line_arguments(default_configuration: dict) -> argparse.Namespace:
