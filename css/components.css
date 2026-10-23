@@ -396,12 +396,31 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+.speed-match-card.correct-flash {
+  background-color: var(--success-bg) !important;
+  border-color: var(--success-border) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3) !important;
+  transform: scale(1.02);
+  transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.speed-match-card.correct-flash .speed-card-text {
+  color: var(--success-text) !important;
+}
+
+.speed-match-card.correct-flash .keycap {
+  background-color: var(--success-border) !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+}
+
 .speed-match-card.matched {
   opacity: 0.2;
   cursor: default;
   pointer-events: none;
   background-color: var(--bg-tertiary);
   border-color: var(--border-color);
+  transition: opacity 300ms ease, background-color 300ms ease, border-color 300ms ease;
 }
 
 .speed-match-card.error-shake {

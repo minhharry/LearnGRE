@@ -482,6 +482,22 @@ a {
   border-color: #007acc;
 }
 
+[data-theme="dark"] .speed-match-card.correct-flash {
+  background-color: #142e1b !important;
+  border-color: #2ea043 !important;
+  box-shadow: 0 0 0 2px rgba(46, 160, 67, 0.35) !important;
+}
+
+[data-theme="dark"] .speed-match-card.correct-flash .speed-card-text {
+  color: #89d185 !important;
+}
+
+[data-theme="dark"] .speed-match-card.correct-flash .keycap {
+  background-color: #2ea043 !important;
+  border-color: #238636 !important;
+  color: #ffffff !important;
+}
+
 [data-theme="dark"] .speed-match-card.matched {
   background-color: #181818;
   border-color: #252526;

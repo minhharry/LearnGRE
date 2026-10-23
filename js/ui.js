@@ -547,11 +547,13 @@ export function renderSpeedMatchQuestion({
     const rightId = selectedRight.dataset.id;
 
     if (leftId === rightId) {
-      // Correct Match
-      selectedLeft.classList.remove('selected');
-      selectedRight.classList.remove('selected');
-      selectedLeft.classList.add('matched');
-      selectedRight.classList.add('matched');
+      // Correct Match: Flash green first, then fade out
+      const elL = selectedLeft;
+      const elR = selectedRight;
+      elL.classList.remove('selected');
+      elR.classList.remove('selected');
+      elL.classList.add('correct-flash');
+      elR.classList.add('correct-flash');
 
       matchedCount++;
       onPairMatched(leftId);
@@ -559,11 +561,18 @@ export function renderSpeedMatchQuestion({
       selectedLeft = null;
       selectedRight = null;
 
+      setTimeout(() => {
+        elL.classList.remove('correct-flash');
+        elR.classList.remove('correct-flash');
+        elL.classList.add('matched');
+        elR.classList.add('matched');
+      }, 300);
+
       if (matchedCount >= question.pairs.length) {
-        // Complete Speed Match: Auto-advance after 350ms
+        // Complete Speed Match: Auto-advance after animation finishes
         setTimeout(() => {
           onComplete();
-        }, 350);
+        }, 550);
       }
     } else {
       // Incorrect Match: Flash red 200ms
@@ -587,7 +596,7 @@ export function renderSpeedMatchQuestion({
   // Click handlers
   stage.querySelectorAll('.speed-match-card').forEach((card) => {
     card.addEventListener('click', () => {
-      if (card.classList.contains('matched')) return;
+      if (card.classList.contains('matched') || card.classList.contains('correct-flash')) return;
       const side = card.dataset.side;
 
       if (side === 'left') {
@@ -607,7 +616,7 @@ export function renderSpeedMatchQuestion({
   // Provide trigger by key helper for keyboard support
   window.__speedMatchTrigger = (key) => {
     const k = key.toUpperCase();
-    const card = stage.querySelector(`.speed-match-card[data-key="${k}"]:not(.matched)`);
+    const card = stage.querySelector(`.speed-match-card[data-key="${k}"]:not(.matched):not(.correct-flash)`);
     if (card) {
       card.click();
     }
