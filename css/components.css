@@ -423,21 +423,6 @@
   color: var(--text-title);
 }
 
-/* Speed Match Right Column Keycaps (Q, W, E, R) */
-.speed-match-card[data-side="right"] .keycap {
-  background-color: var(--accent-color);
-  border-color: var(--accent-hover);
-  border-bottom-color: var(--accent-hover);
-  color: #ffffff;
-}
-
-[data-theme="dark"] .speed-match-card[data-side="right"] .keycap {
-  background-color: var(--accent-color);
-  border: 1px solid #1f6feb;
-  border-bottom: 2px solid #1158c7;
-  color: #ffffff;
-}
-
 .speed-match-card:hover:not(.matched) .keycap,
 .option-card:hover:not(.locked) .keycap {
   filter: brightness(1.08);

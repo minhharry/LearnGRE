@@ -293,13 +293,6 @@
     border-radius: var(--radius-md);
   }
 
-  .speed-match-card .keycap {
-    min-width: 22px;
-    height: 22px;
-    font-size: 11px;
-    flex-shrink: 0;
-  }
-
   .speed-card-text {
     font-size: 12.5px;
     line-height: 1.35;
