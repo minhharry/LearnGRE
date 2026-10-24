@@ -8,7 +8,8 @@
     "temperature": 0.7,
     "top_p": 0.80,
     "presence_penalty": 1.5,
-    "enable_thinking": false
+    "enable_thinking": false,
+    "concurrency": 4
   },
   "generation": {
     "tc_questions_per_word": 3,
@@ -16,11 +17,15 @@
     "total_groups": 32,
     "default_group": 1,
     "academic_domains": [
-      "Natural Sciences (Ecology, Evolutionary Biology, Astronomy, Geology, Physics)",
-      "Social Sciences (Sociology, Anthropology, Economics, Psychology)",
-      "Arts and Humanities (Visual Arts, Music Theory, Architecture, Cultural Studies)",
-      "Philosophy and Literature (Ethics, Epistemology, Literary Criticism, Aesthetics)",
-      "History and Politics (Geopolitics, Historiography, Public Policy, Legal Philosophy)"
+      "Natural Sciences",
+      "Social Sciences",
+      "Arts and Humanities",
+      "Philosophy and Literature",
+      "History and Politics",
+      "Physical sciences",
+      "Biological sciences",
+      "Business",
+      "Everyday topics"
     ]
   },
   "distractors": {

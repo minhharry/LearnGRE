@@ -12,7 +12,9 @@ import re
 import sys
 import time
 from collections import Counter, defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import threading
 from typing import Dict, List, Optional, Set, Tuple
 
 import httpx
@@ -900,10 +902,12 @@ def generate_text_completion_questions(
     configuration: dict,
     force_overwrite: bool,
     limit_words: Optional[int] = None,
+    concurrency: Optional[int] = None,
 ) -> Dict[str, dict]:
     """
     Step 2 & 3: Generate academic Text Completion questions with Local LLM
     and assign pedagogically validated distractors via Python engine.
+    Supports multithreaded concurrent API calls to the local LLM endpoint.
     """
     llm_config = configuration["llm"]
     api_url = llm_config["api_url"]
@@ -915,6 +919,7 @@ def generate_text_completion_questions(
     top_p = float(llm_config.get("top_p", 0.80))
     presence_penalty = float(llm_config.get("presence_penalty", 1.5))
     enable_thinking = bool(llm_config["enable_thinking"])
+    effective_concurrency = int(concurrency if concurrency is not None else llm_config.get("concurrency", 4))
 
     distractor_config = configuration["distractors"]
     academic_fallback_words: Dict[str, List[str]] = distractor_config.get(
@@ -1009,13 +1014,16 @@ def generate_text_completion_questions(
     if limit_words is not None and limit_words > 0:
         records_to_process = records_to_process[:limit_words]
 
+    file_write_lock = threading.Lock()
+    all_vocab_list = list(all_vocabulary_records.values())
+
     progress_bar = tqdm(
-        records_to_process,
+        total=len(records_to_process),
         desc="Step 2 & 3: Generating Text Completion Items",
         unit="word",
     )
 
-    for target_record in progress_bar:
+    def process_single_vocabulary_target(target_record: dict) -> None:
         target_id = target_record["id"]
         target_word = target_record["word"]
         target_group = int(target_record["group"])
@@ -1028,7 +1036,7 @@ def generate_text_completion_questions(
         for question_index in range(1, tc_questions_per_word + 1):
             # Disambiguate duplicate words in wordbank (e.g., cumbersome in Group 11 and Group 22)
             word_duplicate_instances = [
-                r for r in all_vocabulary_records.values() if r.get("word", "").lower() == target_word.lower()
+                r for r in all_vocab_list if r.get("word", "").lower() == target_word.lower()
             ]
             if len(word_duplicate_instances) > 1:
                 question_id = f"q_{target_word}_g{target_group}_tc{question_index:02d}"
@@ -1036,7 +1044,9 @@ def generate_text_completion_questions(
                 question_id = f"q_{target_word}_tc{question_index:02d}"
 
             # Check if record already exists
-            existing_record = existing_question_records.get(question_id)
+            with file_write_lock:
+                existing_record = existing_question_records.get(question_id)
+
             if not force_overwrite and existing_record is not None:
                 # Validate whether existing record has leakage or invalid formatting
                 existing_sentence = existing_record.get("sentence", "")
@@ -1051,7 +1061,8 @@ def generate_text_completion_questions(
                     generated_sentences_for_word.append(existing_sentence)
                     continue
 
-            progress_bar.set_postfix({"word": target_word, "qid": question_id})
+            with file_write_lock:
+                progress_bar.set_postfix({"word": target_word, "qid": question_id})
 
             # Cycle or randomize target domain to guarantee variety across questions
             assigned_domain = target_domains[
@@ -1176,7 +1187,7 @@ def generate_text_completion_questions(
             # Python Engine Distractor Assignment (Step 3)
             distractors = select_text_completion_distractors(
                 target_record=target_record,
-                all_vocabulary_records=list(all_vocabulary_records.values()),
+                all_vocabulary_records=all_vocab_list,
                 synonym_clusters=synonym_clusters,
                 academic_fallback_words=academic_fallback_words,
                 definition_stopwords=definition_stopwords,
@@ -1209,9 +1220,25 @@ def generate_text_completion_questions(
                 "rationale": final_rationale,
             }
 
-            # Append-only streaming write to minimize disk I/O and SSD wear
-            append_jsonl_record(question_templates_jsonl_path, question_record)
-            existing_question_records[question_id] = question_record
+            # Thread-safe append-only streaming write to minimize disk I/O and SSD wear
+            with file_write_lock:
+                append_jsonl_record(question_templates_jsonl_path, question_record)
+                existing_question_records[question_id] = question_record
+
+        with file_write_lock:
+            progress_bar.update(1)
+
+    if effective_concurrency > 1 and len(records_to_process) > 1:
+        with ThreadPoolExecutor(max_workers=effective_concurrency) as executor:
+            worker_futures = [
+                executor.submit(process_single_vocabulary_target, target_record)
+                for target_record in records_to_process
+            ]
+            for future in as_completed(worker_futures):
+                future.result()
+    else:
+        for target_record in records_to_process:
+            process_single_vocabulary_target(target_record)
 
     progress_bar.close()
 
@@ -1354,6 +1381,12 @@ def parse_command_line_arguments(default_configuration: dict) -> argparse.Namesp
         help="Optional limit on number of words to process per group for quick testing.",
     )
     argument_parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=int(default_configuration.get("llm", {}).get("concurrency", 4)),
+        help="Number of concurrent workers for LLM generation phase (default: 4).",
+    )
+    argument_parser.add_argument(
         "--verify",
         action="store_true",
         default=False,
@@ -1426,6 +1459,7 @@ def main() -> None:
             configuration=configuration,
             force_overwrite=cli_arguments.force,
             limit_words=cli_arguments.limit,
+            concurrency=cli_arguments.concurrency,
         )
 
     # Automated Integrity Assertion
