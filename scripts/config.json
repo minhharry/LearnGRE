@@ -224,9 +224,18 @@
     "text_completion_base_expected_seconds": 3.5,
     "text_completion_word_time_multiplier": 0.22
   },
+  "vocab_generation": {
+    "datamuse_api_url": "https://api.datamuse.com/words",
+    "http_timeout_seconds": 15.0,
+    "max_synonyms": 4,
+    "max_antonyms": 3,
+    "max_definitions": 3,
+    "max_vi_gloss_senses": 2
+  },
   "paths": {
     "wordbank_csv": "wordbank.csv",
     "vocab_jsonl": "data/vocab.jsonl",
-    "question_templates_jsonl": "data/question_templates.jsonl"
+    "question_templates_jsonl": "data/question_templates.jsonl",
+    "anhviet_dict": "scripts/anhviet109K.txt"
   }
 }

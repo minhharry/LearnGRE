@@ -8,4 +8,5 @@ dependencies = [
     "httpx>=0.28.1",
     "openai>=3.36.1",
     "tqdm>=4.70.1",
+    "word-forms>=2.1.0",
 ]

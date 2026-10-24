@@ -16,7 +16,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 import httpx
+from nltk.corpus import wordnet as wn
+from nltk.stem import WordNetLemmatizer
 from tqdm import tqdm
+from word_forms.word_forms import get_word_forms
 
 
 def configure_terminal_encoding() -> None:
@@ -263,6 +266,278 @@ def sanitize_vocabulary_forms(
     return sanitized_forms
 
 
+WORDNET_LEMMATIZER = WordNetLemmatizer()
+
+FALLBACK_VIETNAMESE_GLOSS: Dict[str, str] = {
+    "arcane": "bí ẩn, huyền bí, khó hiểu",
+    "hodgepodge": "mớ hỗn tạp, mớ linh tinh, mớ xà bần",
+    "elitist": "tinh hoa, coi mình là tinh hoa, phân biệt giai cấp",
+    "exploitative": "bóc lột, lợi dụng, trục lợi",
+    "crestfallen": "ỉu xìu, nản lòng, thất vọng, ủ rũ",
+    "cataclysmic": "thảm họa, biến động dữ dội, tàn khốc",
+    "duplicitous": "gian dối, hai mặt, lừa gạt",
+    "serendipitous": "tình cờ may mắn, ngẫu nhiên may mắn",
+}
+
+
+def load_anhviet_dictionary(file_path: Path) -> Dict[str, List[str]]:
+    """
+    Parse StarDict format anhviet109K.txt dictionary file into an in-memory dictionary.
+    Maps lowercase English headwords to lists of cleaned Vietnamese definition strings.
+    """
+    if not file_path.is_file():
+        sys.stderr.write(
+            f"Warning: Anh-Viet dictionary file not found at: {file_path}\n"
+        )
+        return {}
+
+    dictionary: Dict[str, List[str]] = {}
+    current_headword: Optional[str] = None
+    current_meanings: List[str] = []
+
+    with open(file_path, mode="r", encoding="utf-8", errors="ignore") as file_handle:
+        for raw_line in file_handle:
+            cleaned_line = raw_line.strip()
+            if not cleaned_line:
+                continue
+            if cleaned_line.startswith("@"):
+                if current_headword and current_meanings:
+                    dictionary[current_headword] = current_meanings
+                header_parts = cleaned_line[1:].split("/", 1)
+                current_headword = header_parts[0].strip().lower()
+                current_meanings = []
+            elif cleaned_line.startswith("-"):
+                raw_meaning = cleaned_line[1:].strip()
+                # Remove parenthetical contextual or grammatical notes e.g. (+ in, with)
+                without_parentheses = re.sub(r"\([^)]*\)", "", raw_meaning).strip()
+                cleaned_meaning = re.sub(r"^[+]\s*", "", without_parentheses).strip()
+                if cleaned_meaning and not cleaned_meaning.startswith("xem "):
+                    current_meanings.append(cleaned_meaning)
+
+        if current_headword and current_meanings:
+            dictionary[current_headword] = current_meanings
+
+    return dictionary
+
+
+def clean_vietnamese_gloss_text(raw_gloss_text: str) -> str:
+    """Normalize whitespace and strip leading or trailing punctuation from a gloss segment."""
+    normalized_whitespace = re.sub(r"\s+", " ", raw_gloss_text).strip()
+    cleaned_delimiters = re.sub(r"\s*;\s*", ", ", normalized_whitespace)
+    return re.sub(r"^[;,.\s]+|[;,.\s]+$", "", cleaned_delimiters)
+
+
+def get_vietnamese_gloss(
+    target_word: str,
+    anhviet_dictionary: Dict[str, List[str]],
+    lemmatizer: WordNetLemmatizer,
+    max_gloss_senses: int = 2,
+) -> str:
+    """
+    Retrieve concise, natural Vietnamese gloss from the loaded Anh-Viet dictionary.
+    Applies hyphenation, British/American spelling normalization, lemmatization, and curated fallbacks.
+    """
+    normalized_word = target_word.lower().strip()
+
+    candidate_lookup_keys = [
+        normalized_word,
+        normalized_word.replace("-", " "),
+        normalized_word.replace(" ", "-"),
+        normalized_word.replace("or", "our"),
+        normalized_word.replace("our", "or"),
+        normalized_word.replace("ize", "ise"),
+        normalized_word.replace("ise", "ize"),
+        lemmatizer.lemmatize(normalized_word, "v"),
+        lemmatizer.lemmatize(normalized_word, "n"),
+        lemmatizer.lemmatize(normalized_word, "a"),
+    ]
+
+    matched_meanings: List[str] = []
+    for candidate_key in candidate_lookup_keys:
+        if candidate_key in anhviet_dictionary and anhviet_dictionary[candidate_key]:
+            matched_meanings = anhviet_dictionary[candidate_key]
+            break
+
+    if not matched_meanings and normalized_word in FALLBACK_VIETNAMESE_GLOSS:
+        return FALLBACK_VIETNAMESE_GLOSS[normalized_word]
+
+    cleaned_meanings: List[str] = []
+    for raw_meaning in matched_meanings:
+        cleaned_meaning = clean_vietnamese_gloss_text(raw_meaning)
+        if cleaned_meaning and cleaned_meaning not in cleaned_meanings:
+            cleaned_meanings.append(cleaned_meaning)
+            if len(cleaned_meanings) >= max_gloss_senses:
+                break
+
+    if not cleaned_meanings and normalized_word in FALLBACK_VIETNAMESE_GLOSS:
+        return FALLBACK_VIETNAMESE_GLOSS[normalized_word]
+
+    return ", ".join(cleaned_meanings)
+
+
+def execute_datamuse_request(
+    api_url: str,
+    parameters: dict,
+    http_client: httpx.Client,
+    max_retries: int = 3,
+    retry_delay_seconds: float = 1.0,
+) -> list:
+    """Execute GET request to Datamuse API with automatic exponential backoff."""
+    for attempt_index in range(1, max_retries + 1):
+        try:
+            response = http_client.get(api_url, params=parameters)
+            response.raise_for_status()
+            parsed_json = response.json()
+            if isinstance(parsed_json, list):
+                return parsed_json
+            return []
+        except (httpx.HTTPError, json.JSONDecodeError):
+            if attempt_index < max_retries:
+                time.sleep(retry_delay_seconds * (2 ** (attempt_index - 1)))
+    return []
+
+
+def fetch_datamuse_lexical_data(
+    target_word: str,
+    api_url: str,
+    http_client: httpx.Client,
+    max_synonyms: int = 4,
+    max_antonyms: int = 3,
+    disallowed_tokens: Optional[Set[str]] = None,
+) -> Tuple[str, List[str], List[str]]:
+    """
+    Query Datamuse API and WordNet to determine primary part of speech, synonyms, and antonyms.
+    Guarantees strict part-of-speech alignment and complete disjointness from morphological family forms.
+    """
+    disallowed_set = {token.lower().strip() for token in (disallowed_tokens or set())}
+    disallowed_set.add(target_word.lower().strip())
+
+    # Step A: Determine primary part of speech from Datamuse, falling back to WordNet
+    detected_pos = "noun"
+    word_info_results = execute_datamuse_request(
+        api_url=api_url,
+        parameters={"sp": target_word, "md": "dp"},
+        http_client=http_client,
+    )
+
+    if word_info_results and "tags" in word_info_results[0]:
+        available_tags = word_info_results[0].get("tags", [])
+        if available_tags and available_tags[0] in ("v", "adj", "adv", "n"):
+            pos_mapping = {"v": "verb", "adj": "adj", "adv": "adv", "n": "noun"}
+            detected_pos = pos_mapping[available_tags[0]]
+        else:
+            for tag in available_tags:
+                if tag in ("v", "adj", "adv", "n"):
+                    pos_mapping = {"v": "verb", "adj": "adj", "adv": "adv", "n": "noun"}
+                    detected_pos = pos_mapping[tag]
+                    break
+    else:
+        wordnet_synsets = wn.synsets(target_word)
+        if wordnet_synsets:
+            first_synset_pos = wordnet_synsets[0].pos()
+            pos_mapping = {"v": "verb", "a": "adj", "s": "adj", "r": "adv", "n": "noun"}
+            detected_pos = pos_mapping.get(first_synset_pos, "noun")
+
+    datamuse_pos_tag = {"verb": "v", "adj": "adj", "adv": "adv", "noun": "n"}.get(
+        detected_pos, "n"
+    )
+
+    # Step B: Retrieve academic synonyms matching the part of speech
+    collected_synonyms: List[str] = []
+
+    direct_synonym_results = execute_datamuse_request(
+        api_url=api_url,
+        parameters={"rel_syn": target_word, "md": "p"},
+        http_client=http_client,
+    )
+    for result_item in direct_synonym_results:
+        candidate_word = result_item.get("word", "").lower().strip()
+        candidate_tags = result_item.get("tags", [])
+        if (
+            candidate_word
+            and candidate_word not in disallowed_set
+            and candidate_word not in collected_synonyms
+            and datamuse_pos_tag in candidate_tags
+            and " " not in candidate_word
+        ):
+            collected_synonyms.append(candidate_word)
+
+    # If direct synonyms are insufficient, augment with high-similarity academic terms (means like)
+    if len(collected_synonyms) < 3:
+        means_like_results = execute_datamuse_request(
+            api_url=api_url,
+            parameters={"ml": target_word, "md": "p"},
+            http_client=http_client,
+        )
+        for result_item in means_like_results:
+            candidate_word = result_item.get("word", "").lower().strip()
+            candidate_tags = result_item.get("tags", [])
+            if (
+                candidate_word
+                and candidate_word not in disallowed_set
+                and candidate_word not in collected_synonyms
+                and datamuse_pos_tag in candidate_tags
+                and " " not in candidate_word
+            ):
+                collected_synonyms.append(candidate_word)
+            if len(collected_synonyms) >= max_synonyms:
+                break
+
+    # If still insufficient, augment with WordNet synsets
+    if len(collected_synonyms) < 2:
+        wordnet_pos_codes = {"verb": ("v",), "adj": ("a", "s"), "adv": ("r",), "noun": ("n",)}[detected_pos]
+        for synset in wn.synsets(target_word):
+            if synset.pos() in wordnet_pos_codes:
+                for lemma in synset.lemmas():
+                    lemma_token = lemma.name().lower().replace("_", "")
+                    if (
+                        lemma_token not in disallowed_set
+                        and lemma_token not in collected_synonyms
+                        and lemma_token != target_word.lower()
+                    ):
+                        collected_synonyms.append(lemma_token)
+
+    collected_synonyms = collected_synonyms[:max_synonyms]
+
+    # Step C: Retrieve antonyms matching the part of speech
+    collected_antonyms: List[str] = []
+
+    direct_antonym_results = execute_datamuse_request(
+        api_url=api_url,
+        parameters={"rel_ant": target_word, "md": "p"},
+        http_client=http_client,
+    )
+    for result_item in direct_antonym_results:
+        candidate_word = result_item.get("word", "").lower().strip()
+        candidate_tags = result_item.get("tags", [])
+        if (
+            candidate_word
+            and candidate_word not in disallowed_set
+            and candidate_word not in collected_antonyms
+            and datamuse_pos_tag in candidate_tags
+            and " " not in candidate_word
+        ):
+            collected_antonyms.append(candidate_word)
+
+    # Augment with WordNet lemma antonyms
+    wordnet_pos_codes = {"verb": ("v",), "adj": ("a", "s"), "adv": ("r",), "noun": ("n",)}[detected_pos]
+    for synset in wn.synsets(target_word):
+        if synset.pos() in wordnet_pos_codes:
+            for lemma in synset.lemmas():
+                for antonym_lemma in lemma.antonyms():
+                    antonym_token = antonym_lemma.name().lower().replace("_", "")
+                    if (
+                        antonym_token not in disallowed_set
+                        and antonym_token not in collected_antonyms
+                        and antonym_token != target_word.lower()
+                    ):
+                        collected_antonyms.append(antonym_token)
+
+    collected_antonyms = collected_antonyms[:max_antonyms]
+
+    return detected_pos, collected_synonyms, collected_antonyms
+
+
 def normalize_vocabulary_entries(
     target_groups: List[int],
     parsed_wordbank: Dict[int, List[Tuple[str, str]]],
@@ -272,79 +547,32 @@ def normalize_vocabulary_entries(
     limit_words: Optional[int] = None,
 ) -> Dict[str, dict]:
     """
-    Step 1: Normalize vocabulary entries using Local LLM with streaming JSONL checkpointing.
+    Step 1: Normalize vocabulary entries using 100% Non-LLM deterministic lexical pipeline.
+    Combines WordNet morphology (word_forms), Datamuse lexical API, and Anh-Viet dictionary.
     Returns in-memory dictionary of all vocabulary records.
     """
-    llm_config = configuration["llm"]
-    api_url = llm_config["api_url"]
-    model_name = llm_config["model_name"]
-    timeout_seconds = float(llm_config["timeout_seconds"])
-    max_retries = int(llm_config["max_retries"])
-    retry_delay_seconds = float(llm_config["retry_delay_seconds"])
-    temperature = float(llm_config["temperature"])
-    enable_thinking = bool(llm_config["enable_thinking"])
+    vocab_gen_config = configuration.get("vocab_generation", {})
+    datamuse_api_url = vocab_gen_config.get(
+        "datamuse_api_url", "https://api.datamuse.com/words"
+    )
+    http_timeout_seconds = float(vocab_gen_config.get("http_timeout_seconds", 15.0))
+    max_synonyms = int(vocab_gen_config.get("max_synonyms", 4))
+    max_antonyms = int(vocab_gen_config.get("max_antonyms", 3))
+    max_vi_gloss_senses = int(vocab_gen_config.get("max_vi_gloss_senses", 2))
+
+    paths_config = configuration.get("paths", {})
+    anhviet_dictionary_path = Path(
+        paths_config.get("anhviet_dict", "scripts/anhviet109K.txt")
+    )
+
+    sys.stdout.write(f"Loading Anh-Viet dictionary from {anhviet_dictionary_path}...\n")
+    anhviet_dictionary = load_anhviet_dictionary(anhviet_dictionary_path)
+    sys.stdout.write(
+        f"Loaded {len(anhviet_dictionary)} dictionary entries into memory.\n"
+    )
 
     existing_vocab_records = load_existing_jsonl_records(
         vocab_jsonl_path, primary_key_field="id"
-    )
-
-    vocab_json_schema = {
-        "type": "object",
-        "properties": {
-            "pos": {
-                "type": "string",
-                "enum": ["noun", "verb", "adj", "adv"],
-            },
-            "forms": {
-                "type": "object",
-                "properties": {
-                    "noun": {"type": "array", "items": {"type": "string"}},
-                    "verb": {"type": "array", "items": {"type": "string"}},
-                    "adj": {"type": "array", "items": {"type": "string"}},
-                    "adv": {"type": "array", "items": {"type": "string"}},
-                },
-                "required": ["noun", "verb", "adj", "adv"],
-            },
-            "definitions": {
-                "type": "array",
-                "items": {"type": "string"},
-                "minItems": 1,
-            },
-            "vi_gloss": {"type": "string"},
-            "synonyms": {
-                "type": "array",
-                "items": {"type": "string"},
-                "minItems": 2,
-            },
-            "antonyms": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-        },
-        "required": [
-            "pos",
-            "forms",
-            "definitions",
-            "vi_gloss",
-            "synonyms",
-            "antonyms",
-        ],
-    }
-
-    system_instruction = (
-        "You are an expert lexicographer and GRE test developer. "
-        "Your task is to standardize raw vocabulary entries into clean, precise structured data.\n\n"
-        "Formatting Guidelines & Rules:\n"
-        "1. Identify the primary part of speech ('noun', 'verb', 'adj', or 'adv').\n"
-        "2. Provide family word forms dictionary with keys 'noun', 'verb', 'adj', 'adv'. "
-        "Include base lemma and derived lemmas; empty list if none exist.\n"
-        "3. Provide 1 to 2 clear, concise English definitions.\n"
-        "4. Provide concise, natural Vietnamese gloss (vi_gloss), comma-separated.\n"
-        "5. Provide 3 to 4 advanced academic GRE synonyms (lowercase lemmas). "
-        "DO NOT include the word itself.\n"
-        "6. Provide 1 to 3 academic GRE antonyms (lowercase lemmas); empty list if none exist. "
-        "DO NOT include the word itself.\n"
-        "7. Strictly adhere to the provided JSON Schema."
     )
 
     words_to_process: List[Tuple[int, int, str, str, str]] = []
@@ -361,88 +589,96 @@ def normalize_vocabulary_entries(
 
     progress_bar = tqdm(
         words_to_process,
-        desc="Step 1: Normalizing Vocabulary Entries",
+        desc="Step 1: Normalizing Vocabulary Entries (Non-LLM)",
         unit="word",
     )
 
-    for group_number, word_index, word, raw_definition, target_id in progress_bar:
-        if not force_overwrite and target_id in existing_vocab_records:
-            continue
+    needs_file_rewrite = force_overwrite and bool(existing_vocab_records)
 
-        progress_bar.set_postfix({"word": word, "group": group_number})
+    with httpx.Client(timeout=http_timeout_seconds) as http_client:
+        for group_number, word_index, word, raw_definition, target_id in progress_bar:
+            if not force_overwrite and target_id in existing_vocab_records:
+                continue
 
-        # Static prefix instructions placed before dynamic word data to optimize prefix KV caching
-        user_prompt = (
-            "Standardize the following target word entry into the required structured JSON format according to lexicographical standards.\n\n"
-            f"Word: {word}\n"
-            f"Raw Definition: {raw_definition}"
-        )
+            progress_bar.set_postfix({"word": word, "group": group_number})
 
-        llm_response = call_local_language_model(
-            api_url=api_url,
-            model_name=model_name,
-            system_instruction=system_instruction,
-            user_prompt=user_prompt,
-            schema_name="standardized_vocabulary_entry",
-            json_schema=vocab_json_schema,
-            temperature=temperature,
-            timeout_seconds=timeout_seconds,
-            max_retries=max_retries,
-            retry_delay_seconds=retry_delay_seconds,
-            enable_thinking=enable_thinking,
-        )
+            # 1. Generate morphological forms using word_forms (pure linguistic morphology)
+            raw_word_forms = get_word_forms(word)
+            sanitized_forms: Dict[str, List[str]] = {
+                "noun": sorted(list(raw_word_forms.get("n", set()))),
+                "verb": sorted(list(raw_word_forms.get("v", set()))),
+                "adj": sorted(list(raw_word_forms.get("a", set()))),
+                "adv": sorted(list(raw_word_forms.get("r", set()))),
+            }
 
-        # Post-process and normalize fields
-        detected_pos = llm_response.get("pos", "noun").lower().strip()
-        if detected_pos in ["adjective"]:
-            detected_pos = "adj"
-        elif detected_pos in ["adverb"]:
-            detected_pos = "adv"
+            all_family_words: Set[str] = {word.lower().strip()}
+            for form_list in sanitized_forms.values():
+                all_family_words.update(form_list)
 
-        sanitized_forms = sanitize_vocabulary_forms(
-            llm_response.get("forms", {}), word, detected_pos
-        )
+            # 2. Query Datamuse and WordNet for POS, synonyms, and antonyms
+            detected_pos, collected_synonyms, collected_antonyms = (
+                fetch_datamuse_lexical_data(
+                    target_word=word,
+                    api_url=datamuse_api_url,
+                    http_client=http_client,
+                    max_synonyms=max_synonyms,
+                    max_antonyms=max_antonyms,
+                    disallowed_tokens=all_family_words,
+                )
+            )
 
-        # Collect all family form words to disallow them in synonyms/antonyms
-        all_family_words: Set[str] = {word.lower()}
-        for form_list in sanitized_forms.values():
-            all_family_words.update(form_list)
+            # Ensure target word itself is listed in its primary POS form list
+            if detected_pos in sanitized_forms:
+                if word.lower().strip() not in sanitized_forms[detected_pos]:
+                    sanitized_forms[detected_pos].insert(0, word.lower().strip())
 
-        cleaned_synonyms = clean_string_list(
-            llm_response.get("synonyms", []), disallowed_tokens=all_family_words
-        )
-        cleaned_antonyms = clean_string_list(
-            llm_response.get("antonyms", []), disallowed_tokens=all_family_words
-        )
-
-        raw_definitions = llm_response.get("definitions", [])
-        if not raw_definitions or not isinstance(raw_definitions, list):
-            cleaned_definitions = [raw_definition.strip()]
-        else:
+            # 3. Clean and parse definitions from wordbank
+            cleaned_raw_definition = raw_definition.replace("\xa0", " ").strip()
+            numbered_definition_segments = re.split(
+                r"(?:^|\s+)\d+\.\s+", cleaned_raw_definition
+            )
             cleaned_definitions = [
-                definition.strip()
-                for definition in raw_definitions
-                if isinstance(definition, str) and definition.strip()
+                segment.strip()
+                for segment in numbered_definition_segments
+                if segment and segment.strip()
             ]
+            if not cleaned_definitions:
+                cleaned_definitions = [cleaned_raw_definition]
 
-        cleaned_vi_gloss = llm_response.get("vi_gloss", "").strip()
+            # 4. Extract Vietnamese gloss from Anh-Viet dictionary
+            cleaned_vi_gloss = get_vietnamese_gloss(
+                target_word=word,
+                anhviet_dictionary=anhviet_dictionary,
+                lemmatizer=WORDNET_LEMMATIZER,
+                max_gloss_senses=max_vi_gloss_senses,
+            )
 
-        vocabulary_record = {
-            "id": target_id,
-            "word": word.lower().strip(),
-            "group": group_number,
-            "pos": detected_pos,
-            "forms": sanitized_forms,
-            "definitions": cleaned_definitions,
-            "vi_gloss": cleaned_vi_gloss,
-            "synonyms": cleaned_synonyms,
-            "antonyms": cleaned_antonyms,
-        }
+            vocabulary_record = {
+                "id": target_id,
+                "word": word.lower().strip(),
+                "group": group_number,
+                "pos": detected_pos,
+                "forms": sanitized_forms,
+                "definitions": cleaned_definitions,
+                "vi_gloss": cleaned_vi_gloss,
+                "synonyms": collected_synonyms,
+                "antonyms": collected_antonyms,
+            }
 
-        append_jsonl_record(vocab_jsonl_path, vocabulary_record)
-        existing_vocab_records[target_id] = vocabulary_record
+            if not force_overwrite:
+                append_jsonl_record(vocab_jsonl_path, vocabulary_record)
+            existing_vocab_records[target_id] = vocabulary_record
 
     progress_bar.close()
+
+    if needs_file_rewrite:
+        # Rewrite the complete JSONL file in sorted order to ensure zero duplicate IDs
+        sorted_records = sorted(
+            existing_vocab_records.values(),
+            key=lambda r: (r.get("group", 0), r.get("id", "")),
+        )
+        rewrite_jsonl_file(vocab_jsonl_path, sorted_records)
+
     return existing_vocab_records
 
 
