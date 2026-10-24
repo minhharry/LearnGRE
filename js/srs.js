@@ -9,16 +9,16 @@ export const SRS_CONFIG = {
     level_1: 4,
     level_2: 24,
     level_3: 48,
-    level_4: 72,
+    level_4: 96,
   },
-  level_4_extension_hours: 120, // 5 days
+  level_4_extension_hours: 168, // 7 days
   penalty_reset_hours: 1,
   mastery_consecutive_correct: 3,
   fluent_recall_multiplier: 1.8,
   blind_tap_threshold_seconds: 1.2,
   flash_recall_expected_seconds: 3.0,
   text_completion_base_expected_seconds: 3.5,
-  text_completion_word_time_multiplier: 0.18,
+  text_completion_word_time_multiplier: 0.22,
 };
 
 /**
@@ -102,8 +102,12 @@ export function evaluateWordAnswer(
     if (reaction === 'fluent') {
       currentRecord.consecutive_correct = (currentRecord.consecutive_correct || 0) + 1;
 
-      // Check Session Level Cap (max +1 level per word per session)
-      const canPromote = !hasBeenPromotedThisSession;
+      // Check Spaced Promotion eligibility:
+      // Promotion to next level requires:
+      // 1. Not already promoted in the current session
+      // 2. Either word is Level 0 (first encounter) OR current time >= next_review (due for formal review)
+      const isDueForReview = !currentRecord.next_review || new Date() >= new Date(currentRecord.next_review);
+      const canPromote = !hasBeenPromotedThisSession && (currentLevel === 0 || isDueForReview);
 
       if (currentLevel === 0) {
         currentRecord.level = 1;
@@ -116,7 +120,7 @@ export function evaluateWordAnswer(
           currentRecord.status = 'learning';
           currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_2);
           levelPromoted = true;
-        } else {
+        } else if (isDueForReview) {
           currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_1);
         }
       } else if (currentLevel === 2) {
@@ -125,7 +129,7 @@ export function evaluateWordAnswer(
           currentRecord.status = 'reviewing';
           currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_3);
           levelPromoted = true;
-        } else {
+        } else if (isDueForReview) {
           currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_2);
         }
       } else if (currentLevel === 3) {
@@ -134,12 +138,14 @@ export function evaluateWordAnswer(
           currentRecord.status = 'mastered';
           currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_4);
           levelPromoted = true;
-        } else {
+        } else if (isDueForReview) {
           currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_3);
         }
       } else if (currentLevel === 4) {
-        // Extend Level 4
-        currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.level_4_extension_hours);
+        // Extend Level 4 only when due for review
+        if (isDueForReview) {
+          currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.level_4_extension_hours);
+        }
       }
 
       // Auto-Unflag if consecutive_correct >= 3 with Fluent Recall
@@ -148,6 +154,7 @@ export function evaluateWordAnswer(
       }
     } else {
       // Hesitant or Blind Tap: Keep Level, queue for re-test, reset next_review per Leitner table
+      const isDueForReview = !currentRecord.next_review || new Date() >= new Date(currentRecord.next_review);
       retestNeeded = true;
       if (currentLevel === 0) {
         currentRecord.level = 1;
@@ -155,11 +162,17 @@ export function evaluateWordAnswer(
         currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_1);
         levelPromoted = true;
       } else if (currentLevel === 1) {
-        currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_1);
+        if (isDueForReview) {
+          currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_1);
+        }
       } else if (currentLevel === 2) {
-        currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_2);
+        if (isDueForReview) {
+          currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_2);
+        }
       } else if (currentLevel === 3) {
-        currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_3);
+        if (isDueForReview) {
+          currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_3);
+        }
       }
       // Level 4: maintain current cycle
     }
@@ -170,10 +183,11 @@ export function evaluateWordAnswer(
     currentRecord.consecutive_correct = 0;
 
     // Error Notebook Auto-Flagging:
-    // 1. False Confidence: TC mistake with delta_t <= 3.5s
+    // 1. False Confidence: TC mistake with delta_t <= base expected seconds
     // 2. Repeated mistake (mistake_count >= 2) or previous level >= 3
+    const falseConfidenceThresholdMs = SRS_CONFIG.text_completion_base_expected_seconds * 1000;
     if (
-      (questionType === 'TC' && responseTimeMs <= 3500) ||
+      (questionType === 'TC' && responseTimeMs <= falseConfidenceThresholdMs) ||
       currentRecord.mistake_count >= 2 ||
       currentLevel >= 3
     ) {

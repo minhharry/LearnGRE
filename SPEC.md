@@ -179,7 +179,7 @@ Hệ thống đo thời gian thực tế từ khi câu hỏi hiển thị đến
 * **Điều kiện đạt Level 4 (Mastered):**
   1. Đạt tối thiểu số lần trả lời đúng liên tiếp quy định trong cấu hình (`consecutive_correct >= 3`).
   2. Lần trả lời gần nhất phải đạt chuẩn **Fluent Recall** (phản xạ nhanh, không ngập ngừng).
-* **Giới hạn thăng cấp 1 Level/Phiên (Per-Session Level Cap):** Trong phạm vi một phiên học, mỗi từ vựng chỉ được tăng tối đa 1 bậc Level để duy trì tính kỷ luật của Spaced Repetition.
+* **Giới hạn thăng cấp theo Thời gian thực (Time-Gated Spaced Promotion):** Một từ vựng chỉ được phép thăng cấp (Level >= 1 -> Level + 1) khi phiên học diễn ra sau khi đã đến hạn ôn tập thực tế (`Date.now() >= next_review`) và chưa thăng cấp trong phiên hiện tại. Nếu cày nhiều phiên liên tiếp khi chưa đến hạn, từ vựng được luyện tập (Drill) nhưng giữ nguyên Level để ngăn chặn tình trạng ảo cấp.
 
 ### 4.3. Phản ứng Xử lý Ngầm của Hệ thống
 
@@ -195,7 +195,7 @@ Hệ thống đo thời gian thực tế từ khi câu hỏi hiển thị đến
 
 * Kho từ 960 từ được chia thành **32 Groups** (chuẩn hóa chính xác 30 từ/Group từ `wordbank.csv`).
 * **Hai chế độ điều hướng Group linh hoạt:**
-  * **Chế độ Lộ trình Chuẩn (Guided Mastery Mode - Mặc định):** Bắt đầu tuần tự từ `Group 1`. Tự động mở khóa `Group N + 1` khi **>= 85% số từ trong Group hiện tại đạt từ Level 3 trở lên** và không còn từ nào ở Level 0.
+  * **Chế độ Lộ trình Chuẩn (Guided Mastery Mode - Mặc định):** Bắt đầu tuần tự từ `Group 1`. Tự động mở khóa `Group N + 1` khi **toàn bộ 30 từ trong Group hiện tại đã được nạp (không còn từ nào ở Level 0)** để đảm bảo tiến độ 1 Group/ngày trong lộ trình 6 tuần; huy hiệu Hoàn thành xuất sắc (Mastery) được trao khi đạt >= 85% từ ở Level 3 trở lên.
   * **Chế độ Cấp tốc / Tự do (Cram Override / Diagnostic Mode):** Cho phép người học chuẩn bị thi gấp trong thời gian ngắn có thể chủ động chọn bất kỳ Group nào để luyện tập ngay lập tức mà không bị khóa cứng, đồng thời dữ liệu SRS vẫn được ghi nhận độc lập theo từng từ.
 
 ### 5.2. Cấu trúc Phiên học Linh hoạt (Adaptive Session Generator)
@@ -256,10 +256,10 @@ Tối ưu cho việc học cấp tốc với chu kỳ tính theo Giờ ở cấp
 | Cấp độ (Level) | Trạng thái (`status`) | Chu kỳ Ôn tập (`next_review`) | Điều kiện Thăng hạng (Trong phiên học) | Điều kiện Giữ nguyên / Giáng hạng |
 | --- | --- | --- | --- | --- |
 | **Level 0** | Chưa học (`unseen`) | — | Trả lời Đúng lần đầu tiên -> **Lên Level 1** | Trả lời Sai -> **Vào Level 1** (`mistake_count = 1`) |
-| **Level 1** | Mới nạp / Đang yếu (`learning`) | **4 giờ** *(Ôn lại trong ngày)* | Đúng + *Fluent Recall* -> **Lên Level 2** | • Đúng nhưng *Hesitant* -> Giữ Level 1 (4 giờ)<br>• Sai -> Giữ Level 1 (Reset về **1 giờ**) |
-| **Level 2** | Đang củng cố (`learning`) | **24 giờ (1 ngày)** | Đúng + *Fluent Recall* -> **Lên Level 3** | • Đúng nhưng *Hesitant* -> Giữ Level 2 (24 giờ)<br>• Sai -> **Giáng về Level 1** (4 giờ) |
-| **Level 3** | Nắm vững (`reviewing`) | **48 giờ (2 ngày)** *(hoặc 72h theo config)* | Đúng + *Fluent Recall* + đạt chỉ tiêu `consecutive_correct` -> **Lên Level 4** | • Đúng nhưng *Hesitant* -> Giữ Level 3<br>• Sai -> **Giáng về Level 1** (4 giờ) |
-| **Level 4** | Thành thạo (`mastered`) | **72 giờ (3 ngày)** *(hoặc 7 ngày theo config)* | Đúng + *Fluent Recall* -> Gia hạn Level 4 (+5 ngày / 120h) | • Đúng nhưng *Hesitant* -> Giữ nguyên Level 4 (giữ chu kỳ hiện tại)<br>• Sai -> **Giáng về Level 2** (24 giờ) |
+| **Level 1** | Mới nạp / Đang yếu (`learning`) | **4 giờ** *(Ôn lại trong ngày)* | Đúng + *Fluent Recall* + đã đến hạn -> **Lên Level 2** | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ Level 1 (4 giờ)<br>• Sai -> Giữ Level 1 (Reset về **1 giờ**) |
+| **Level 2** | Đang củng cố (`learning`) | **24 giờ (1 ngày)** | Đúng + *Fluent Recall* + đã đến hạn -> **Lên Level 3** | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ Level 2 (24 giờ)<br>• Sai -> **Giáng về Level 1** (4 giờ) |
+| **Level 3** | Nắm vững (`reviewing`) | **48 giờ (2 ngày)** | Đúng + *Fluent Recall* + đã đến hạn + đạt chỉ tiêu `consecutive_correct` -> **Lên Level 4** | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ Level 3<br>• Sai -> **Giáng về Level 1** (4 giờ) |
+| **Level 4** | Thành thạo (`mastered`) | **96 giờ (4 ngày)** | Đúng + *Fluent Recall* + đã đến hạn -> Gia hạn Level 4 (+7 ngày / 168h) | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ nguyên Level 4 (giữ chu kỳ hiện tại)<br>• Sai -> **Giáng về Level 2** (24 giờ) |
 
 ### 6.2. Quy tắc Sổ tay Câu sai Tự động (Error Notebook)
 

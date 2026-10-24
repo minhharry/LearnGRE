@@ -1062,7 +1062,7 @@ export function renderSessionSummary({ metrics, onRestartSession, onReturnHome, 
             Đã mở khóa Group ${metrics.nextGroup}!
           </div>
           <div style="font-size: 13px; color: var(--success-text);">
-            Bạn đã đạt trên 85% từ vựng Level 3 trở lên trong Group hiện tại.
+            Bạn đã nạp toàn bộ 30 từ vựng trong Group này và sẵn sàng cho Group tiếp theo.
           </div>
           <button id="btn-unlock-next-group" class="btn-primary" style="margin-top: 12px; background-color: var(--success-border);">
             Chuyển sang Group ${metrics.nextGroup} ngay

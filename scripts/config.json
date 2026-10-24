@@ -210,16 +210,17 @@
     "intervals_hours": {
       "level_1": 4,
       "level_2": 24,
-      "level_3": 72,
-      "level_4": 168
+      "level_3": 48,
+      "level_4": 96
     },
+    "level_4_extension_hours": 168,
     "penalty_reset_hours": 1,
     "mastery_consecutive_correct": 3,
     "fluent_recall_multiplier": 1.8,
     "blind_tap_threshold_seconds": 1.2,
     "flash_recall_expected_seconds": 3.0,
     "text_completion_base_expected_seconds": 3.5,
-    "text_completion_word_time_multiplier": 0.18
+    "text_completion_word_time_multiplier": 0.22
   },
   "paths": {
     "wordbank_csv": "wordbank.csv",

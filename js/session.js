@@ -127,16 +127,16 @@ export class SessionManager {
       targetWords.push(...extraPrior.slice(0, remainingSlots));
     }
 
-    // 2. Medium priority: Active learning from current group
-    const remainingForLearning = 8 - targetWords.length;
-    if (remainingForLearning > 0) {
-      targetWords.push(...shuffleArray(learningPool).slice(0, remainingForLearning));
-    }
-
-    // 3. New words pool from current group
-    const remainingForNew = 12 - targetWords.length;
+    // 2. New words pool from current group (prioritized to introduce unseen words in group)
+    const remainingForNew = Math.min(newWordsPool.length, 12 - targetWords.length);
     if (remainingForNew > 0) {
       targetWords.push(...shuffleArray(newWordsPool).slice(0, remainingForNew));
+    }
+
+    // 3. Active learning drill from current group (words not yet due for formal review)
+    const remainingForLearning = 12 - targetWords.length;
+    if (remainingForLearning > 0) {
+      targetWords.push(...shuffleArray(learningPool).slice(0, remainingForLearning));
     }
 
     // Fallback if targetWords is small: pick any from group
@@ -383,7 +383,8 @@ export class SessionManager {
     const avgResponseSec = totalAnswered > 0 ? (totalMs / totalAnswered / 1000).toFixed(1) : 0;
 
     // Check if group unlock condition is met:
-    // >= 85% of words in current group at Level >= 3 and 0 words at Level 0
+    // Progressive syllabus: Unlock next group when all 30 words in current group have been introduced (level0 === 0)
+    // Mastery milestone: >= 85% of words in current group at Level >= 3
     const groupWords = this.allVocab.filter((w) => w.group === this.group);
     let level3Or4 = 0;
     let level0 = 0;
@@ -399,7 +400,7 @@ export class SessionManager {
     const isLastGroup = this.group >= TOTAL_GROUPS;
 
     const groupMasteryPercent = groupWords.length > 0 ? Math.round((level3Or4 / groupWords.length) * 100) : 0;
-    const canUnlockNext = groupMasteryPercent >= 85 && level0 === 0 && !isLastGroup;
+    const canUnlockNext = level0 === 0 && !isLastGroup;
     const isAllCompleted = groupMasteryPercent >= 85 && level0 === 0 && isLastGroup;
 
     return {
