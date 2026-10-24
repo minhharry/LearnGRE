@@ -18,6 +18,7 @@
 * **Cấu trúc thư mục nguồn:**
 
 ```text
+├── sw.js                       # Service Worker PWA cache tĩnh (hỗ trợ học offline 100%)
 ├── index.html                  # Giao diện chính (Top bar, Split containers, Modals)
 ├── data/
 │   ├── vocab.jsonl              # 960 từ vựng (32 Groups, 30 từ/Group) dạng JSON Lines
@@ -26,13 +27,13 @@
 │   ├── config.json             # File cấu hình tham số LLM, số lượng câu hỏi, SRS, session
 │   └── generate_data.py        # Pipeline sinh dữ liệu từ wordbank.csv sang vocab.jsonl và question_templates.jsonl
 ├── css/
-│   ├── base.css                # Biến màu, CSS reset, typography, animation
+│   ├── base.css                # Biến màu, CSS reset, typography, animation, Theme dark/light
 │   ├── layout.css              # Window frame, draggable split-pane, drawer
 │   ├── components.css          # Progress bar, option cards, rationales, keycap badges
 │   └── responsive.css          # Breakpoints thích ứng đa thiết bị
 └── js/
     ├── app.js                  # Entry point, quản lý Group Progression & phím tắt toàn cục
-    ├── storage.js              # Quản lý localStorage, Export/Import JSON
+    ├── storage.js              # Quản lý localStorage, Export/Import JSON & Sync Code Base64
     ├── srs.js                  # Cram-Mode SRS 4 cấp độ, Implicit Telemetry
     ├── distractor.js           # Engine lọc distractor cho Flash Recall
     ├── session.js              # Bộ sinh câu hỏi phiên học linh hoạt (Adaptive Session Generator) & Redemption Loop
@@ -43,16 +44,22 @@
 
 ## 2. Đặc tả Giao diện & Trải nghiệm Người dùng (Zero-Friction UI/UX)
 
-### 2.1. Thẩm mỹ Thiết kế (Desktop Minimalist Aesthetic)
+### 2.1. Thẩm mỹ Thiết kế (Desktop Minimalist Aesthetic & Dark/Light Themes)
 
-* **Bảng màu:**
-  * **Nền chính:** Trắng sáng `#ffffff` và nền phụ `#f8fafc`.
-  * **Đường viền:** Xám nhạt `#e5e7eb` (`1px solid`).
-  * **Typography:** Tiêu đề `#0f172a`, nội dung câu hỏi `#1e293b` (`font-size: 18px`, `line-height: 1.6`), nhãn phụ `#64748b`.
-  * **Phản hồi tức thì (Instant Feedback):**
-    * **Đúng (Success):** Nền `#ecfdf5`, viền `#10b981`, chữ `#065f46`.
+* **Hỗ trợ 2 Chế độ Theme (Dual Theme Support):**
+  * **Chế độ Tối (Dark Mode - Mặc định theo cảm hứng bảng màu VS Code):**
+    * Nền chính: `#1e1e1e`, nền phụ/sidebar: `#252526`, nền card/khung: `#2d2d2d`.
+    * Đường viền: `#3e3e42` (`1px solid`).
+    * Typography: Tiêu đề `#ffffff`, nội dung câu hỏi `#e2e8f0` (`font-size: 18px`, `line-height: 1.6`), nhãn phụ `#94a3b8`.
+  * **Chế độ Sáng (Light Mode):**
+    * Nền chính: Trắng sáng `#ffffff`, nền phụ/sidebar: `#f8fafc`.
+    * Đường viền: Xám nhạt `#e5e7eb` (`1px solid`).
+    * Typography: Tiêu đề `#0f172a`, nội dung câu hỏi `#1e293b` (`font-size: 18px`, `line-height: 1.6`), nhãn phụ `#64748b`.
+  * **Phản hồi tức thì (Instant Feedback chung):**
+    * **Đúng (Success):** Nền `#ecfdf5`, viền `#10b981`, chữ `#065f46` (hoặc biến thể tối tương ứng).
     * **Sai (Error):** Nền `#fef2f2`, viền `#ef4444`, chữ `#991b1b`.
   * **Accent Color:** Xanh dương `#3b82f6` (chuyển Cam `#f97316` khi đạt Streak >= 5).
+  * **Theme Toggle:** Nút chuyển đổi nhanh theme có mặt trên cả Top-bar và Header trong phiên học (`session-theme-btn`).
 * **Thanh tiến độ phiên học:** Segmented Progress Bar hiển thị trực quan các câu trong phiên kèm bộ đếm Streak.
 
 ### 2.2. Cơ chế Tương tác Tức thời (Auto-Submit & Zero-Click Submit)
@@ -118,10 +125,13 @@ Mỗi dòng là một câu hỏi học thuật Text Completion hoàn chỉnh (1 
   "progression": {
     "current_group": 1,
     "unlocked_groups": [1],
-    "daily_streak": 4
+    "daily_streak": 4,
+    "last_active_date": "2026-10-24"
   },
   "ui_prefs": {
-    "sidebar_width": 340
+    "sidebar_width": 320,
+    "study_mode": "guided",
+    "theme": "dark"
   },
   "words": {
     "g1_w01": {
@@ -241,15 +251,15 @@ Không áp đặt 4 nhịp sóng cứng nhắc. Thuật toán phân bổ câu h�
 
 ### 6.1. Bảng Trạng thái Leitner 4 Cấp độ
 
-Tối ưu cho việc học cấp tốc với chu kỳ tính theo Giờ ở cấp độ đầu:
+Tối ưu cho việc học cấp tốc với chu kỳ tính theo Giờ ở cấp độ đầu (Cấu hình linh hoạt đồng bộ giữa frontend `js/srs.js` và `scripts/config.json`):
 
 | Cấp độ (Level) | Trạng thái (`status`) | Chu kỳ Ôn tập (`next_review`) | Điều kiện Thăng hạng (Trong phiên học) | Điều kiện Giữ nguyên / Giáng hạng |
 | --- | --- | --- | --- | --- |
 | **Level 0** | Chưa học (`unseen`) | — | Trả lời Đúng lần đầu tiên -> **Lên Level 1** | Trả lời Sai -> **Vào Level 1** (`mistake_count = 1`) |
 | **Level 1** | Mới nạp / Đang yếu (`learning`) | **4 giờ** *(Ôn lại trong ngày)* | Đúng + *Fluent Recall* -> **Lên Level 2** | • Đúng nhưng *Hesitant* -> Giữ Level 1 (4 giờ)<br>• Sai -> Giữ Level 1 (Reset về **1 giờ**) |
 | **Level 2** | Đang củng cố (`learning`) | **24 giờ (1 ngày)** | Đúng + *Fluent Recall* -> **Lên Level 3** | • Đúng nhưng *Hesitant* -> Giữ Level 2 (24 giờ)<br>• Sai -> **Giáng về Level 1** (4 giờ) |
-| **Level 3** | Nắm vững (`reviewing`) | **3 ngày** | Đúng + *Fluent Recall* + đạt chỉ tiêu `consecutive_correct` -> **Lên Level 4** | • Đúng nhưng *Hesitant* -> Giữ Level 3 (3 ngày)<br>• Sai -> **Giáng về Level 1** (4 giờ) |
-| **Level 4** | Thành thạo (`mastered`) | **7 ngày** *(Duy trì trước kỳ thi)* | Đúng + *Fluent Recall* -> Gia hạn Level 4 (+10 ngày) | • Đúng nhưng *Hesitant* -> Giữ nguyên Level 4 (giữ chu kỳ hiện tại)<br>• Sai -> **Giáng về Level 2** (1 ngày) |
+| **Level 3** | Nắm vững (`reviewing`) | **48 giờ (2 ngày)** *(hoặc 72h theo config)* | Đúng + *Fluent Recall* + đạt chỉ tiêu `consecutive_correct` -> **Lên Level 4** | • Đúng nhưng *Hesitant* -> Giữ Level 3<br>• Sai -> **Giáng về Level 1** (4 giờ) |
+| **Level 4** | Thành thạo (`mastered`) | **72 giờ (3 ngày)** *(hoặc 7 ngày theo config)* | Đúng + *Fluent Recall* -> Gia hạn Level 4 (+5 ngày / 120h) | • Đúng nhưng *Hesitant* -> Giữ nguyên Level 4 (giữ chu kỳ hiện tại)<br>• Sai -> **Giáng về Level 2** (24 giờ) |
 
 ### 6.2. Quy tắc Sổ tay Câu sai Tự động (Error Notebook)
 
@@ -264,8 +274,12 @@ Từ vựng được tự động gắn cờ `flagged_error: true` khi:
 ## 7. An toàn Dữ liệu & Lưu trữ (Data Persistence & Backup)
 
 1. **Auto-Save từng Câu hỏi (Per-Question Checkpoint):** Lưu tiến độ vào `localStorage` ngay khi kết thúc mỗi câu hỏi, không lo mất dữ liệu khi đóng tab bất ngờ.
-2. **Nhắc nhở Sao lưu Định kỳ (Backup Reminder):** Cảnh báo sao lưu sau mỗi 3 ngày (`last_backup > 3 ngày`) bằng huy hiệu trên thanh điều hướng.
-3. **Quản lý Cấu hình Tập trung (`scripts/config.json`):** Mọi tham số vận hành (số câu hỏi TC cần sinh mỗi từ, kích thước phiên học, ngưỡng SRS) được lưu trong file cấu hình, không hardcode trong mã nguồn.
+2. **Nhắc nhở Sao lưu Định kỳ (Backup Reminder):** Cảnh báo sao lưu sau mỗi 3 ngày (`last_backup > 3 ngày`) bằng huy hiệu cảnh báo trên nút sao lưu ở thanh điều hướng.
+3. **Hỗ trợ Đa dạng Phương thức Sao lưu / Khôi phục:**
+   * **Export/Import File JSON:** Tải xuống và nạp lại file sao lưu tiến độ `gre_progress_backup_*.json`.
+   * **Mã Đồng bộ Base64 (Sync Code):** Mã hóa toàn bộ tiến độ thành chuỗi Base64 gọn gàng để sao chép / dán nhanh giữa các thiết bị mà không cần trung chuyển file.
+4. **Hỗ trợ Offline Toàn diện (Service Worker PWA):** Tích hợp `sw.js` tự động cache toàn bộ tài nguyên tĩnh (HTML, CSS, JS, data JSONL) giúp hệ thống hoạt động bình thường ngay cả khi không có kết nối Internet.
+5. **Quản lý Cấu hình Tập trung (`scripts/config.json`):** Mọi tham số vận hành (số câu hỏi TC cần sinh mỗi từ, kích thước phiên học, ngưỡng SRS) được lưu trong file cấu hình, không hardcode trong mã nguồn.
 
 ---
 
