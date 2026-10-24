@@ -164,6 +164,8 @@ def call_local_language_model(
     max_retries: int,
     retry_delay_seconds: float,
     enable_thinking: bool,
+    top_p: float = 0.80,
+    presence_penalty: float = 1.5,
 ) -> dict:
     """
     Execute POST request to OpenAI-compatible Local LLM endpoint enforcing JSON Schema output.
@@ -186,6 +188,8 @@ def call_local_language_model(
             "enable_thinking": enable_thinking,
         },
         "temperature": temperature,
+        "top_p": top_p,
+        "presence_penalty": presence_penalty,
     }
 
     last_error: Optional[Exception] = None
@@ -672,6 +676,8 @@ def generate_text_completion_questions(
     max_retries = int(llm_config["max_retries"])
     retry_delay_seconds = float(llm_config["retry_delay_seconds"])
     temperature = float(llm_config["temperature"])
+    top_p = float(llm_config.get("top_p", 0.80))
+    presence_penalty = float(llm_config.get("presence_penalty", 1.5))
     enable_thinking = bool(llm_config["enable_thinking"])
 
     distractor_config = configuration["distractors"]
@@ -712,43 +718,48 @@ def generate_text_completion_questions(
                 "type": "string",
                 "enum": target_domains,
             },
-            "sentence": {"type": "string"},
-            "pos_required": {
+            "logic_blueprint": {
                 "type": "string",
-                "enum": ["noun", "verb", "adj", "adv"],
+                "description": "1 sentence defining the contrast or causal pivot that strictly forces the target word.",
             },
-            "form_required": {
+            "complete_sentence": {
                 "type": "string",
-                "enum": ["base"],
+                "description": "The complete academic GRE sentence containing the EXACT uninflected target word. Do not use [BLANK] here.",
             },
-            "clue": {"type": "string"},
-            "rationale": {"type": "string"},
+            "clue": {
+                "type": "string",
+                "description": "The exact clause or keywords from complete_sentence that serve as the context clue.",
+            },
+            "rationale": {
+                "type": "string",
+                "description": "Insightful Vietnamese rationale (2-3 sentences) analyzing why the target word is the only semantically fitting choice.",
+            },
         },
         "required": [
             "domain",
-            "sentence",
-            "pos_required",
-            "form_required",
+            "logic_blueprint",
+            "complete_sentence",
             "clue",
             "rationale",
         ],
     }
 
     system_instruction = (
-        "You are an expert GRE verbal test item writer.\n"
-        "Your task is to author a high-level academic GRE Text Completion sentence containing the exact token [BLANK].\n\n"
+        "You are an expert GRE Verbal test writer for ETS.\n"
+        "Your objective is to author an advanced academic GRE sentence that provides airtight context clues for a specific target word.\n\n"
         "Strict Editorial & Construction Rules:\n"
-        "1. Replace the target word with the EXACT token '[BLANK]'. Do NOT use underscores '____' or any other symbols.\n"
-        "2. ZERO-LEAKAGE RULE: The target word (or its direct inflectional variants) MUST NEVER appear anywhere in the sentence other than at [BLANK].\n"
-        "3. Grammatical Parallelism: The sentence MUST strictly require the BASE UNINFLECTED FORM at [BLANK].\n"
-        "   - If verb: place [BLANK] after an infinitive marker 'to [BLANK]', modal verb 'can/might/would [BLANK]', or with a plural subject.\n"
-        "   - If noun: singular countable or uncountable noun (e.g., 'a profound [BLANK]').\n"
-        "   - If adjective: predicate adjective after linking verb (e.g., 'remained entirely [BLANK]') or attributive adjective modifying a noun.\n"
-        "   - If adverb: modifying an uninflected adjective or base verb.\n"
-        "4. Context Clue: Include a clear contrast (e.g., although, despite, whereas, however) or causal relationship.\n"
-        "5. Clue: Extract the precise keywords or clause indicating the correct choice.\n"
-        "6. Rationale: Write an insightful Vietnamese rationale (2-3 sentences) analyzing the context clue and why the target word is the only semantically fitting word.\n"
-        "7. Strictly adhere to the provided JSON Schema."
+        "1. High-Constraint Clues: The sentence must contain a structural pivot (e.g., 'Although [X]... [TARGET]', 'Rather than [X], it was [TARGET]', '[CAUSE]... rendered it [TARGET]') so that the sentence's internal logic strictly dictates the target word.\n"
+        "2. EXACT BASE UNINFLECTED FORM (CRITICAL):\n"
+        "   - Write 'complete_sentence' containing the EXACT base uninflected target word.\n"
+        "   - DO NOT inflect the target word (NEVER use -ed, -ing, -s, or other suffixes).\n"
+        "   - Grammatical positioning to guarantee base form:\n"
+        "     * If VERB: MUST be placed after an infinitive ('to [TARGET]'), modal verb ('could/might/would [TARGET]'), or with plural subject ('scholars consistently [TARGET]').\n"
+        "     * If ADJECTIVE: after linking verb ('remained entirely [TARGET]', 'rendered the policy [TARGET]', 'deemed [TARGET]').\n"
+        "     * If NOUN: singular uninflected noun ('a profound [TARGET]').\n"
+        "     * If ADVERB: modifying base verb or adjective ('proceeded [TARGET]').\n"
+        "3. ZERO-LEAKAGE: Never use any other forms, stems, or derivations of the target word anywhere in the sentence.\n"
+        "4. Rationale: Write an insightful Vietnamese rationale (2-3 sentences) analyzing why the target word is the only semantically fitting choice.\n"
+        "5. Adhere strictly to the JSON schema."
     )
 
     # Filter target vocabulary records for requested groups
@@ -779,7 +790,14 @@ def generate_text_completion_questions(
         generated_sentences_for_word: List[str] = []
 
         for question_index in range(1, tc_questions_per_word + 1):
-            question_id = f"q_{target_word}_tc{question_index:02d}"
+            # Disambiguate duplicate words in wordbank (e.g., cumbersome in Group 11 and Group 22)
+            word_duplicate_instances = [
+                r for r in all_vocabulary_records.values() if r.get("word", "").lower() == target_word.lower()
+            ]
+            if len(word_duplicate_instances) > 1:
+                question_id = f"q_{target_word}_g{target_group}_tc{question_index:02d}"
+            else:
+                question_id = f"q_{target_word}_tc{question_index:02d}"
 
             # Check if record already exists
             existing_record = existing_question_records.get(question_id)
@@ -815,59 +833,107 @@ def generate_text_completion_questions(
                 )
 
             # Structure user prompt: constant instruction prefix first, dynamic data last for high cache hits
-            user_prompt = (
+            base_prompt = (
                 f"Author a GRE Text Completion item for the target word.\n\n"
                 f"Target Word: {target_word}\n"
                 f"Part of Speech: {target_pos}\n"
                 f"Assigned Domain: {assigned_domain}\n"
                 f"English Definitions: {target_definitions_text}\n"
                 f"Vietnamese Meaning: {target_vi_gloss}\n\n"
+                f"Reminder: 'complete_sentence' must contain the EXACT uninflected lemma '{target_word}' without -ed, -ing, -s suffixes.\n\n"
                 f"{previous_sentences_context}"
             )
 
-            llm_response = call_local_language_model(
-                api_url=api_url,
-                model_name=model_name,
-                system_instruction=system_instruction,
-                user_prompt=user_prompt,
-                schema_name="gre_tc_question",
-                json_schema=tc_json_schema,
-                temperature=temperature,
-                timeout_seconds=timeout_seconds,
-                max_retries=max_retries,
-                retry_delay_seconds=retry_delay_seconds,
-                enable_thinking=enable_thinking,
-            )
+            # Extract word family derivatives for leakage protection
+            forms_dict = target_record.get("forms", {})
+            forbidden_derivations = {
+                derivative.lower().strip()
+                for form_category, form_list in forms_dict.items()
+                for derivative in form_list
+                if isinstance(derivative, str) and derivative.lower().strip() != target_word.lower()
+            }
 
-            raw_sentence = llm_response.get("sentence", "").strip()
-            # Normalize blanks to [BLANK]
-            normalized_sentence = re.sub(r"_{2,}", "[BLANK]", raw_sentence)
-            if "[BLANK]" not in normalized_sentence:
-                # If target word is in sentence, replace target word with [BLANK]
-                pattern = re.compile(
-                    rf"\b{re.escape(target_word)}\b", re.IGNORECASE
+            max_sentence_attempts = 3
+            normalized_sentence = ""
+            final_clue = ""
+            final_rationale = ""
+            final_domain = assigned_domain
+
+            for sentence_attempt in range(1, max_sentence_attempts + 1):
+                attempt_prompt = base_prompt
+                if sentence_attempt > 1:
+                    attempt_prompt += f"\nPrevious attempt had formatting or lemma errors. You MUST use the exact uninflected word '{target_word}'."
+
+                llm_response = call_local_language_model(
+                    api_url=api_url,
+                    model_name=model_name,
+                    system_instruction=system_instruction,
+                    user_prompt=attempt_prompt,
+                    schema_name="gre_tc_question",
+                    json_schema=tc_json_schema,
+                    temperature=temperature,
+                    timeout_seconds=timeout_seconds,
+                    max_retries=max_retries,
+                    retry_delay_seconds=retry_delay_seconds,
+                    enable_thinking=enable_thinking,
+                    top_p=top_p,
+                    presence_penalty=presence_penalty,
                 )
-                if pattern.search(normalized_sentence):
-                    normalized_sentence = pattern.sub(
-                        "[BLANK]", normalized_sentence, count=1
+
+                raw_complete_sentence = llm_response.get("complete_sentence", "").strip()
+                final_clue = llm_response.get("clue", "").strip()
+                final_rationale = llm_response.get("rationale", "").strip()
+                final_domain = llm_response.get("domain", assigned_domain)
+
+                # Tier 1: Check exact base uninflected match
+                exact_pattern = re.compile(rf"\b{re.escape(target_word)}\b", re.IGNORECASE)
+                if not exact_pattern.search(raw_complete_sentence):
+                    # Check if inflected with -ed, -ing, -s, etc.
+                    inflection_pattern = re.compile(
+                        rf"\b{re.escape(target_word)}(ed|ing|s|es|d)\b", re.IGNORECASE
                     )
-                else:
-                    normalized_sentence = f"{normalized_sentence} [BLANK]"
+                    if inflection_pattern.search(raw_complete_sentence) and sentence_attempt < max_sentence_attempts:
+                        continue
 
-            # Check if sentence still contains the target word outside [BLANK]
-            sentence_remainder = normalized_sentence.replace("[BLANK]", " ")
-            leak_pattern = re.compile(
-                rf"\b{re.escape(target_word)}\b", re.IGNORECASE
-            )
-            if leak_pattern.search(sentence_remainder):
-                # Auto-repair via surgical replacement if leak is redundant
-                sys.stdout.write(
-                    f"\n[Auto-Repair] Detected answer leak for '{target_word}' in {question_id}. Sanitizing sentence...\n"
+                # Tier 2: Replace target word with [BLANK]
+                if exact_pattern.search(raw_complete_sentence):
+                    candidate_sentence = exact_pattern.sub("[BLANK]", raw_complete_sentence, count=1)
+                else:
+                    candidate_sentence = re.sub(r"_{2,}", "[BLANK]", raw_complete_sentence)
+                    if "[BLANK]" not in candidate_sentence:
+                        candidate_sentence = f"{candidate_sentence} [BLANK]"
+
+                # Tier 3: Leakage Assertion (neither root word nor forms may remain outside [BLANK])
+                sentence_remainder = candidate_sentence.replace("[BLANK]", " ").lower()
+                leak_detected = bool(exact_pattern.search(sentence_remainder))
+                derivation_leak = any(
+                    bool(re.search(rf"\b{re.escape(deriv)}\b", sentence_remainder))
+                    for deriv in forbidden_derivations
+                    if len(deriv) > 2
                 )
-                # Remove redundant occurrences of target_word if preceded by 'is a/an/profound' or similar
-                normalized_sentence = leak_pattern.sub(
-                    "flaw", normalized_sentence
-                ) if target_pos == "noun" else leak_pattern.sub("", normalized_sentence)
+
+                if (leak_detected or derivation_leak) and sentence_attempt < max_sentence_attempts:
+                    continue
+
+                # Normalize articles: "a [BLANK]" / "an [BLANK]" -> "a/an [BLANK]"
+                candidate_sentence = re.sub(
+                    r"\b(?:a/an|an/a|a/a/an|an/an/a|a\s*/\s*an)\s+\[BLANK\]",
+                    "a/an [BLANK]",
+                    candidate_sentence,
+                    flags=re.IGNORECASE,
+                )
+                candidate_sentence = re.sub(
+                    r"(?<!/)\b(?:a|an)\s+\[BLANK\]",
+                    "a/an [BLANK]",
+                    candidate_sentence,
+                    flags=re.IGNORECASE,
+                )
+                # Clean whitespace & punctuation
+                candidate_sentence = re.sub(r"[ \t]{2,}", " ", candidate_sentence)
+                candidate_sentence = re.sub(r"\s+([,.:;?!])", r"\1", candidate_sentence)
+
+                normalized_sentence = candidate_sentence
+                break
 
             generated_sentences_for_word.append(normalized_sentence)
 
@@ -897,14 +963,14 @@ def generate_text_completion_questions(
                 "id": question_id,
                 "target_id": target_id,
                 "type": "TC",
-                "domain": llm_response.get("domain", assigned_domain),
+                "domain": final_domain,
                 "sentence": normalized_sentence,
                 "pos_required": target_pos,
                 "form_required": "base",
-                "clue": llm_response.get("clue", "").strip(),
+                "clue": final_clue,
                 "correct_answer": target_word,
                 "distractors": distractors,
-                "rationale": llm_response.get("rationale", "").strip(),
+                "rationale": final_rationale,
             }
 
             # Append-only streaming write to minimize disk I/O and SSD wear
@@ -923,441 +989,15 @@ def generate_text_completion_questions(
     return existing_question_records
 
 
-def export_manual_review_reports(
-    hard_problems: List[dict],
-    output_json_path: Path,
-    output_md_path: Path,
-) -> None:
-    """Export detailed catalog of hard problems requiring manual hand-fixing to JSON and Markdown."""
-    output_json_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_json_path, "w", encoding="utf-8") as f:
-        json.dump(hard_problems, f, ensure_ascii=False, indent=2)
-
-    type_counts = Counter(item["type"] for item in hard_problems)
-    
-    with open(output_md_path, "w", encoding="utf-8") as f:
-        f.write("# LearnGRE - Manual Data Quality Review Checklist\n\n")
-        f.write("This document lists questions containing semantic, grammatical, or structural issues ")
-        f.write("that require manual / editorial fixing by hand rather than naive automated regex replacement.\n\n")
-        
-        f.write("## Summary of Flagged Issues\n\n")
-        f.write("| Issue Type | Count | Description |\n")
-        f.write("| :--- | :--- | :--- |\n")
-        f.write(f"| `MULTI_BLANK` | {type_counts.get('MULTI_BLANK', 0)} | Sentence has 2 [BLANK] tokens instead of 1 in a single-choice question |\n")
-        f.write(f"| `FORM_LEAKAGE` | {type_counts.get('FORM_LEAKAGE', 0)} | Word family / inflectional derivative of target leaked in sentence |\n")
-        f.write(f"| `VERB_PARTICIPLE_MISMATCH` | {type_counts.get('VERB_PARTICIPLE_MISMATCH', 0)} | Sentence syntax demands past participle (-ed) but answer is base lemma |\n")
-        f.write(f"| `AUTO_REPAIR_FLAW_ARTIFACT` | {type_counts.get('AUTO_REPAIR_FLAW_ARTIFACT', 0)} | Previous naive regex inserted 'flaw' into broken position |\n")
-        f.write(f"| `CLUE_HALLUCINATION_OR_DEFECT` | {type_counts.get('CLUE_HALLUCINATION_OR_DEFECT', 0)} | Clue text is hallucinated or copied dictionary definition |\n")
-        f.write(f"| `ENGLISH_RATIONALE` | {type_counts.get('ENGLISH_RATIONALE', 0)} | Rationale is written in English instead of Vietnamese |\n")
-        f.write(f"| **Total** | **{len(hard_problems)}** | |\n\n")
-
-        # Group by type
-        by_type: Dict[str, List[dict]] = defaultdict(list)
-        for item in hard_problems:
-            by_type[item["type"]].append(item)
-
-        for ptype, items in by_type.items():
-            f.write(f"## {ptype} ({len(items)} items)\n\n")
-            for item in items:
-                qid = item["id"]
-                word = item["word"]
-                grp = item["group"]
-                action = item["action_needed"]
-                details = item["details"]
-                sent = item["sentence"]
-                f.write(f"- [ ] **`{qid}`** (Word: `{word}`, Group {grp})\n")
-                f.write(f"  - **Issue:** {details}\n")
-                f.write(f"  - **Action Required:** {action}\n")
-                f.write(f"  - **Sentence:** `{sent}`\n\n")
 
 
-def generate_missing_cumbersome_questions(
-    vocab_records: Dict[str, dict],
-    synonym_clusters: Dict[str, Set[str]],
-    academic_fallback_words: Dict[str, List[str]],
-    definition_stopwords: Set[str],
-    word_to_group: Dict[str, int],
-) -> List[dict]:
-    """Generate 3 dedicated academic Text Completion questions for duplicate word cumbersome in Group 22."""
-    target_record = vocab_records.get("g22_w03")
-    if not target_record:
-        return []
-
-    templates = [
-        {
-            "id": "q_cumbersome_g22_tc01",
-            "target_id": "g22_w03",
-            "type": "TC",
-            "domain": "Natural Sciences (Ecology, Evolutionary Biology, Astronomy, Geology, Physics)",
-            "sentence": "Although the newly synthesized biomaterial exhibited exceptional tensile strength, its a/an [BLANK] molecular structure severely impeded cell adhesion and nutrient diffusion, prompting bioengineers to refine the polymer chain.",
-            "pos_required": "adj",
-            "form_required": "base",
-            "clue": "severely impeded cell adhesion and nutrient diffusion",
-            "correct_answer": "cumbersome",
-            "rationale": "Cụm từ 'severely impeded cell adhesion' (cản trở nghiêm trọng sự bám dính của tế bào) chỉ ra rằng cấu trúc phân tử quá nặng nề và phức tạp. Tính từ 'cumbersome' (cồng kềnh, vụng về) phản ánh chính xác nhược điểm cấu trúc này, đối lập với đặc tính vượt trội ban đầu."
-        },
-        {
-            "id": "q_cumbersome_g22_tc02",
-            "target_id": "g22_w03",
-            "type": "TC",
-            "domain": "Social Sciences (Sociology, Anthropology, Economics, Psychology)",
-            "sentence": "Although the digital welfare portal was initially heralded as a triumph of bureaucratic modernization, citizens quickly discovered that its a/an [BLANK] multi-stage verification protocols created insurmountable hurdles for vulnerable claimants.",
-            "pos_required": "adj",
-            "form_required": "base",
-            "clue": "multi-stage verification protocols created insurmountable hurdles for vulnerable claimants",
-            "correct_answer": "cumbersome",
-            "rationale": "Cụm từ 'multi-stage verification protocols created insurmountable hurdles' thiết lập mối quan hệ nhân quả cho thấy thủ tục quá rườm rà, phức tạp và kém hiệu quả. Do đó, 'cumbersome' (rườm rà, cồng kềnh) là từ chuẩn xác nhất."
-        },
-        {
-            "id": "q_cumbersome_g22_tc03",
-            "target_id": "g22_w03",
-            "type": "TC",
-            "domain": "Philosophy and Literature (Ethics, Epistemology, Literary Criticism, Aesthetics)",
-            "sentence": "While the author's early essays were celebrated for their aphoristic wit and brisk pacing, her later philosophical treatises were burdened by a/an [BLANK] prose style that obscured her central arguments beneath layers of digressive exposition.",
-            "pos_required": "adj",
-            "form_required": "base",
-            "clue": "burdened by... that obscured her central arguments beneath layers of digressive exposition",
-            "correct_answer": "cumbersome",
-            "rationale": "Cụm từ 'obscured her central arguments beneath layers of digressive exposition' (che khuất luận điểm chính dưới nhiều tầng diễn giải lan man) đối lập với phong cách ngắn gọn ('aphoristic wit, brisk pacing'). Tính từ 'cumbersome' (nặng nề, vụng về, rườm rà) là lựa chọn duy nhất làm nổi bật văn phong rắc rối này."
-        }
-    ]
-
-    for t in templates:
-        t["distractors"] = select_text_completion_distractors(
-            target_record=target_record,
-            all_vocabulary_records=list(vocab_records.values()),
-            synonym_clusters=synonym_clusters,
-            academic_fallback_words=academic_fallback_words,
-            definition_stopwords=definition_stopwords,
-            word_to_group=word_to_group,
-        )
-
-    return templates
-
-
-def fix_integrity_defects(
-    vocab_jsonl_path: Path,
-    question_templates_jsonl_path: Path,
-    configuration: dict,
-) -> int:
-    """
-    Repair questions failing integrity checks:
-    - Automatically normalizes 'a [BLANK]' and 'an [BLANK]' to 'a/an [BLANK]' to eliminate phonetic giveaways and grammar errors.
-    - Cleans whitespace and punctuation spacing artifacts.
-    - Re-selects valid distractors using 1-hop bidirectional synonym graph, preventing future-group fallback leakage.
-    - Generates missing question templates for duplicate wordbank items (g22_w03 cumbersome).
-    - Identifies and exports hard problems requiring human editorial fixes to data/manual_review_needed.md.
-    Returns the total number of repaired question items.
-    """
-    sys.stdout.write(
-        "Running enhanced automated repair on question templates...\n"
-    )
-
-    vocab_records = load_existing_jsonl_records(
-        vocab_jsonl_path, primary_key_field="id"
-    )
-    question_records = load_existing_jsonl_records(
-        question_templates_jsonl_path, primary_key_field="id"
-    )
-
-    vocab_by_word = {
-        record["word"].lower().strip(): record for record in vocab_records.values()
-    }
-    vocab_by_id = {record["id"]: record for record in vocab_records.values()}
-    all_vocabulary_records = list(vocab_records.values())
-
-    synonym_clusters = build_bidirectional_synonym_graph(all_vocabulary_records)
-
-    distractor_config = configuration.get("distractors", {})
-    academic_fallback_words = distractor_config.get("academic_fallback_words", {})
-    definition_stopwords = set(distractor_config.get("definition_stopwords", []))
-    word_to_group = {
-        v["word"].lower().strip(): int(v["group"])
-        for v in vocab_records.values()
-        if "word" in v and "group" in v
-    }
-
-    repaired_questions_count = 0
-    article_fixes_count = 0
-    whitespace_fixes_count = 0
-    distractor_fixes_count = 0
-
-    hard_problems: List[dict] = []
-
-    # 1. Inspect and repair existing questions
-    for question_id, question in question_records.items():
-        sentence = question.get("sentence", "")
-        correct_answer = question.get("correct_answer", "").strip().lower()
-        distractors = [d.strip().lower() for d in question.get("distractors", [])]
-        target_id = question.get("target_id", "")
-        target_record = vocab_by_id.get(target_id) or vocab_by_word.get(correct_answer)
-        target_pos = target_record.get("pos") if target_record else question.get("pos_required", "")
-        target_group = int(target_record.get("group", 999)) if target_record else 999
-
-        sentence_modified = False
-        distractor_modified = False
-
-        # Fix missing blank placeholder if completely absent
-        if "[BLANK]" not in sentence:
-            pattern = re.compile(rf"\b{re.escape(correct_answer)}\b", re.IGNORECASE)
-            if pattern.search(sentence):
-                sentence = pattern.sub("[BLANK]", sentence, count=1)
-            else:
-                sentence = f"{sentence} [BLANK]"
-            sentence_modified = True
-
-        # Safe programmatic fix: Normalize "a [BLANK]" and "an [BLANK]" to "a/an [BLANK]" (strictly idempotent)
-        normalized_sentence = re.sub(
-            r"\b(?:a/an|an/a|a/a/an|an/an/a|a\s*/\s*an)\s+\[BLANK\]",
-            "a/an [BLANK]",
-            sentence,
-            flags=re.IGNORECASE,
-        )
-        normalized_sentence = re.sub(
-            r"(?<!/)\b(?:a|an)\s+\[BLANK\]",
-            "a/an [BLANK]",
-            normalized_sentence,
-            flags=re.IGNORECASE,
-        )
-        if normalized_sentence != sentence:
-            sentence = normalized_sentence
-            sentence_modified = True
-            article_fixes_count += 1
-
-        # Safe programmatic fix: Clean up double spaces and punctuation spacing
-        cleaned_sentence = re.sub(r"[ \t]{2,}", " ", sentence)
-        cleaned_sentence = re.sub(r"\s+([,.:;?!])", r"\1", cleaned_sentence)
-        if cleaned_sentence != sentence:
-            sentence = cleaned_sentence
-            sentence_modified = True
-            whitespace_fixes_count += 1
-
-        if sentence_modified:
-            question["sentence"] = sentence
-
-        # Safe programmatic fix: Distractor validation and re-selection
-        needs_distractor_repair = False
-        if len(distractors) != 3 or len(set([correct_answer] + distractors)) != 4:
-            needs_distractor_repair = True
-        else:
-            target_cluster = synonym_clusters.get(correct_answer, {correct_answer})
-            for d in distractors:
-                # Synonym with target
-                if d in target_cluster:
-                    needs_distractor_repair = True
-                    break
-                # Leaked from future group via fallback
-                d_grp = word_to_group.get(d)
-                if d_grp is not None and d_grp > target_group:
-                    needs_distractor_repair = True
-                    break
-                # POS mismatch
-                d_rec = vocab_by_word.get(d)
-                if d_rec and d_rec.get("pos") != target_pos:
-                    needs_distractor_repair = True
-                    break
-
-            # Check mutual synonyms between distractors
-            if not needs_distractor_repair:
-                for i in range(len(distractors)):
-                    d_i_cluster = synonym_clusters.get(distractors[i], {distractors[i]})
-                    for j in range(i + 1, len(distractors)):
-                        if distractors[j] in d_i_cluster:
-                            needs_distractor_repair = True
-                            break
-                    if needs_distractor_repair:
-                        break
-
-        if needs_distractor_repair and target_record:
-            new_distractors = select_text_completion_distractors(
-                target_record=target_record,
-                all_vocabulary_records=all_vocabulary_records,
-                synonym_clusters=synonym_clusters,
-                academic_fallback_words=academic_fallback_words,
-                definition_stopwords=definition_stopwords,
-                word_to_group=word_to_group,
-            )
-            question["distractors"] = new_distractors
-            distractor_modified = True
-            distractor_fixes_count += 1
-
-        if sentence_modified or distractor_modified:
-            repaired_questions_count += 1
-
-        # Catalogue Hard Problems for Manual Editorial Review
-        blank_count = sentence.count("[BLANK]")
-        if blank_count > 1:
-            hard_problems.append({
-                "id": question_id,
-                "target_id": target_id,
-                "word": correct_answer,
-                "group": target_group,
-                "type": "MULTI_BLANK",
-                "details": f"Sentence contains {blank_count} [BLANK] tokens instead of 1.",
-                "sentence": sentence,
-                "action_needed": "Edit sentence to keep exactly 1 [BLANK] corresponding to target word."
-            })
-        elif blank_count == 0:
-            hard_problems.append({
-                "id": question_id,
-                "target_id": target_id,
-                "word": correct_answer,
-                "group": target_group,
-                "type": "ZERO_BLANK",
-                "details": "Sentence contains no [BLANK] token.",
-                "sentence": sentence,
-                "action_needed": "Insert [BLANK] in place of target word."
-            })
-
-        # Morphological form leakage outside [BLANK]
-        sent_no_blank = sentence.replace("[BLANK]", " ").lower()
-        if target_record:
-            all_forms: Set[str] = set()
-            for flist in target_record.get("forms", {}).values():
-                for fw in flist:
-                    clean_fw = fw.lower().strip()
-                    if len(clean_fw) > 2 and clean_fw != correct_answer:
-                        all_forms.add(clean_fw)
-            for form_word in all_forms:
-                if re.search(rf"\b{re.escape(form_word)}\b", sent_no_blank):
-                    hard_problems.append({
-                        "id": question_id,
-                        "target_id": target_id,
-                        "word": correct_answer,
-                        "group": target_group,
-                        "type": "FORM_LEAKAGE",
-                        "details": f"Target form '{form_word}' leaked in sentence text.",
-                        "sentence": sentence,
-                        "action_needed": f"Rewrite or replace leaked word '{form_word}' with a non-derivative synonym."
-                    })
-
-        # Auto-repair artifact "flaw"
-        if target_pos == "noun" and correct_answer != "flaw" and re.search(r"\bflaw\b", sent_no_blank):
-            if question_id in ["q_ire_tc02", "q_repertoire_tc02", "q_repertoire_tc03"]:
-                hard_problems.append({
-                    "id": question_id,
-                    "target_id": target_id,
-                    "word": correct_answer,
-                    "group": target_group,
-                    "type": "AUTO_REPAIR_FLAW_ARTIFACT",
-                    "details": "Previous auto-repair naively substituted target word with 'flaw', corrupting syntax/meaning.",
-                    "sentence": sentence,
-                    "action_needed": "Restore grammatically sound context for target word."
-                })
-
-        # Passive / participle mismatch for verbs
-        if target_pos == "verb":
-            aux_match = re.search(
-                r"\b(is|was|were|are|been|being|had|has|have)\s+(\w+\s+)?\[BLANK\]",
-                sentence,
-                re.IGNORECASE,
-            )
-            if aux_match:
-                aux_phrase = aux_match.group(0).lower()
-                if not re.search(r"\bto\s+\[blank\]", aux_phrase, re.IGNORECASE):
-                    hard_problems.append({
-                        "id": question_id,
-                        "target_id": target_id,
-                        "word": correct_answer,
-                        "group": target_group,
-                        "type": "VERB_PARTICIPLE_MISMATCH",
-                        "details": f"Sentence syntax ('{aux_phrase}') requires a past participle (-ed), but options are base verbs.",
-                        "sentence": sentence,
-                        "action_needed": "Reframe sentence clause to use active infinitive/modal (e.g., 'sought to [BLANK]', 'would [BLANK]')."
-                    })
-
-        # Clue hallucination
-        clue_text_lower = question.get("clue", "").lower()
-        if (
-            (question_id == "q_prescient_tc03" and "meteorite" in clue_text_lower)
-            or (question_id == "q_tacit_tc01" and "understood or implied" in clue_text_lower)
-            or (question_id == "q_tantalizing_tc03" and "the sentence establishes" in clue_text_lower)
-        ):
-            hard_problems.append({
-                "id": question_id,
-                "target_id": target_id,
-                "word": correct_answer,
-                "group": target_group,
-                "type": "CLUE_HALLUCINATION_OR_DEFECT",
-                "details": f"Clue text does not match sentence context: '{question.get('clue', '')[:70]}...'",
-                "sentence": sentence,
-                "action_needed": "Update clue to extract actual keywords/clause from sentence."
-            })
-
-        # Non-Vietnamese rationale
-        rat = question.get("rationale", "")
-        has_vn = bool(re.search(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]", rat, re.IGNORECASE))
-        if not has_vn:
-            hard_problems.append({
-                "id": question_id,
-                "target_id": target_id,
-                "word": correct_answer,
-                "group": target_group,
-                "type": "ENGLISH_RATIONALE",
-                "details": f"Rationale is written in English instead of Vietnamese: '{rat[:60]}...'",
-                "sentence": sentence,
-                "action_needed": "Translate or rewrite rationale in Vietnamese (2-3 sentences)."
-            })
-
-    # 2. Coverage Repair: Ensure g22_w03 (cumbersome) has 3 question templates
-    existing_target_ids = {q.get("target_id") for q in question_records.values()}
-    if "g22_w03" not in existing_target_ids:
-        missing_cumbersome_questions = generate_missing_cumbersome_questions(
-            vocab_records=vocab_records,
-            synonym_clusters=synonym_clusters,
-            academic_fallback_words=academic_fallback_words,
-            definition_stopwords=definition_stopwords,
-            word_to_group=word_to_group,
-        )
-        for q_item in missing_cumbersome_questions:
-            question_records[q_item["id"]] = q_item
-            repaired_questions_count += 1
-        sys.stdout.write(
-            f"Generated {len(missing_cumbersome_questions)} missing questions for Group 22 cumbersome (g22_w03).\n"
-        )
-
-    # Save repaired question templates
-    all_questions_list = list(question_records.values())
-    all_questions_list.sort(key=lambda item: item["id"])
-    with open(question_templates_jsonl_path, "w", encoding="utf-8") as file_handle:
-        for item in all_questions_list:
-            file_handle.write(json.dumps(item, ensure_ascii=False) + "\n")
-
-    sys.stdout.write(
-        f"Automated repairs applied: {repaired_questions_count} item(s) modified/added.\n"
-        f"  - Article normalizations ('a/an [BLANK]'): {article_fixes_count}\n"
-        f"  - Whitespace & punctuation cleanups: {whitespace_fixes_count}\n"
-        f"  - Distractor re-selections: {distractor_fixes_count}\n"
-    )
-
-    # Export catalog of hard problems for manual review
-    manual_review_json_path = question_templates_jsonl_path.parent / "manual_review_needed.json"
-    manual_review_md_path = question_templates_jsonl_path.parent / "manual_review_needed.md"
-    export_manual_review_reports(hard_problems, manual_review_json_path, manual_review_md_path)
-
-    sys.stdout.write(
-        f"\nIdentified {len(hard_problems)} hard problem(s) requiring manual editorial review.\n"
-        f"Checklist exported to: {manual_review_md_path}\n"
-    )
-
-    return repaired_questions_count
 
 
 def run_comprehensive_integrity_check(
     vocab_jsonl_path: Path,
     question_templates_jsonl_path: Path,
-    auto_fix: bool = False,
-    configuration: Optional[dict] = None,
 ) -> None:
     """Validate 100% of generated records for consistency, schema adherence, and synonym disjointness."""
-    if auto_fix:
-        if configuration is None:
-            configuration = load_runtime_configuration(Path("scripts/config.json"))
-        fix_integrity_defects(
-            vocab_jsonl_path=vocab_jsonl_path,
-            question_templates_jsonl_path=question_templates_jsonl_path,
-            configuration=configuration,
-        )
 
     sys.stdout.write("Running automated integrity assertion on generated files...\n")
 
@@ -1425,8 +1065,6 @@ def run_comprehensive_integrity_check(
         else:
             seen_sentence_map[sent] = question_id
 
-    # Check for hard problems remaining in the dataset
-    manual_review_md_path = question_templates_jsonl_path.parent / "manual_review_needed.md"
 
     if validation_errors:
         sys.stderr.write(
@@ -1434,19 +1072,11 @@ def run_comprehensive_integrity_check(
         )
         for error in validation_errors[:20]:
             sys.stderr.write(f"  - {error}\n")
-        if not auto_fix:
-            sys.stderr.write(
-                "\nRun with '--fix' flag (e.g., 'uv run python -m scripts.generate_data --fix') to automatically repair failed entries.\n"
-            )
         raise AssertionError("Data integrity check failed!")
 
     sys.stdout.write(
         "Automated integrity assertion passed successfully with 0 structural defects detected.\n"
     )
-    if manual_review_md_path.is_file():
-        sys.stdout.write(
-            f"Notice: Hard problems requiring human review are logged in {manual_review_md_path}\n"
-        )
 
 
 def parse_command_line_arguments(default_configuration: dict) -> argparse.Namespace:
@@ -1493,12 +1123,6 @@ def parse_command_line_arguments(default_configuration: dict) -> argparse.Namesp
         default=False,
         help="Run integrity verification check only.",
     )
-    argument_parser.add_argument(
-        "--fix",
-        action="store_true",
-        default=False,
-        help="Automatically repair entries that fail integrity checks (e.g., re-selecting valid distractors).",
-    )
     return argument_parser.parse_args()
 
 
@@ -1520,29 +1144,9 @@ def main() -> None:
         run_comprehensive_integrity_check(
             vocab_jsonl_path=vocab_jsonl_path,
             question_templates_jsonl_path=question_templates_jsonl_path,
-            auto_fix=cli_arguments.fix,
-            configuration=configuration,
         )
         return
 
-    # Check if --fix is invoked standalone (without explicit --group or --force)
-    group_specified = any(
-        arg == "--group" or arg.startswith("--group=") for arg in sys.argv
-    )
-    if (
-        cli_arguments.fix
-        and not group_specified
-        and not cli_arguments.force
-        and cli_arguments.step == "all"
-    ):
-        run_comprehensive_integrity_check(
-            vocab_jsonl_path=vocab_jsonl_path,
-            question_templates_jsonl_path=question_templates_jsonl_path,
-            auto_fix=True,
-            configuration=configuration,
-        )
-        sys.stdout.write("Fix and integrity verification completed successfully.\n")
-        return
 
     parsed_wordbank = parse_wordbank_csv(wordbank_csv_path)
 
@@ -1592,8 +1196,6 @@ def main() -> None:
     run_comprehensive_integrity_check(
         vocab_jsonl_path=vocab_jsonl_path,
         question_templates_jsonl_path=question_templates_jsonl_path,
-        auto_fix=cli_arguments.fix,
-        configuration=configuration,
     )
 
     sys.stdout.write("Pipeline execution completed successfully.\n")

@@ -26,6 +26,9 @@ curl http://localhost:9931/v1/chat/completions \
     },
     "chat_template_kwargs": {
       "enable_thinking": false
-    }
+    },
+    "temperature": 0.7,
+    "top_p": 0.80,
+    "presence_penalty": 1.5
   }'
 ```
