@@ -555,6 +555,24 @@
     font-size: 14px;
   }
 
+  .dashboard-widgets-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .dashboard-widget-card {
+    padding: 14px 16px;
+  }
+
+  .widget-metric-val {
+    font-size: 24px;
+  }
+
+  .widget-number {
+    font-size: 26px;
+  }
+
   .word-table-container {
     width: 100%;
     max-width: 100%;

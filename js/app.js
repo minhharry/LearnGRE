@@ -12,6 +12,7 @@ import {
   importProgressJson,
   encodeProgressCode,
   decodeProgressCode,
+  recordCompletedSession,
 } from './storage.js';
 import { evaluateWordAnswer } from './srs.js';
 import { SessionManager } from './session.js';
@@ -32,6 +33,7 @@ import {
   renderFlashMistakeFeedback,
   renderSessionSummary,
   renderThemeButton,
+  stopCountdownTimer,
   ICONS,
 } from './ui.js';
 
@@ -142,6 +144,9 @@ class AppController {
     if (progressHeader && this.currentView !== 'session') {
       progressHeader.style.display = 'none';
     }
+    if (this.currentView !== 'dashboard') {
+      stopCountdownTimer();
+    }
     document.body.classList.toggle('in-session', this.currentView === 'session');
 
     const navAll = document.getElementById('nav-all-groups');
@@ -187,6 +192,7 @@ class AppController {
    * Starts a new practice session.
    */
   startSession(mode = 'standard') {
+    stopCountdownTimer();
     this.currentView = 'session';
     document.body.classList.add('in-session');
     this.renderSidebar();
@@ -209,7 +215,10 @@ class AppController {
     const { question, isRedemption, done } = this.activeSession.nextQuestion();
 
     if (done) {
-      // Session finished! Render summary
+      // Session finished! Increment daily completed session count
+      const todaySessions = recordCompletedSession(this.storageData);
+
+      // Render summary
       const metrics = this.activeSession.getSummaryMetrics();
       if (metrics.canUnlockNext && metrics.nextGroup && metrics.nextGroup <= 32) {
         const nextG = metrics.nextGroup;
@@ -223,6 +232,7 @@ class AppController {
       this.renderSidebar();
       renderSessionSummary({
         metrics,
+        todaySessions,
         onRestartSession: () => this.startSession('standard'),
         onReturnHome: () => {
           this.currentView = 'dashboard';

@@ -10,7 +10,7 @@ export const BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 /**
  * Returns today's date formatted as YYYY-MM-DD.
  */
-function getTodayDateString() {
+export function getTodayDateString() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -22,6 +22,7 @@ function getTodayDateString() {
  * Creates default state conforming to SPEC.md section 3.3.
  */
 export function createDefaultState() {
+  const today = getTodayDateString();
   return {
     version: '4.0',
     last_backup: new Date().toISOString(),
@@ -29,7 +30,9 @@ export function createDefaultState() {
       current_group: 1,
       unlocked_groups: [1],
       daily_streak: 1,
-      last_active_date: getTodayDateString(),
+      last_active_date: today,
+      today_sessions_count: 0,
+      today_sessions_date: today,
     },
     ui_prefs: {
       sidebar_width: 320,
@@ -81,6 +84,13 @@ export function loadProgressData() {
       saveProgressData(data);
     }
 
+    // Ensure today_sessions fields are initialized and reset on new day
+    if (!data.progression.today_sessions_date || data.progression.today_sessions_date !== today) {
+      data.progression.today_sessions_count = 0;
+      data.progression.today_sessions_date = today;
+      saveProgressData(data);
+    }
+
     return data;
   } catch (error) {
     console.error('Failed to parse progress data from storage:', error);
@@ -88,6 +98,21 @@ export function loadProgressData() {
     saveProgressData(freshState);
     return freshState;
   }
+}
+
+/**
+ * Records completion of a study session today and returns current count.
+ */
+export function recordCompletedSession(storageData) {
+  const today = getTodayDateString();
+  if (!storageData.progression.today_sessions_date || storageData.progression.today_sessions_date !== today) {
+    storageData.progression.today_sessions_count = 1;
+    storageData.progression.today_sessions_date = today;
+  } else {
+    storageData.progression.today_sessions_count = (storageData.progression.today_sessions_count || 0) + 1;
+  }
+  saveProgressData(storageData);
+  return storageData.progression.today_sessions_count;
 }
 
 /**

@@ -452,7 +452,7 @@ body.in-session .split-handle {
 .group-item-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-muted);

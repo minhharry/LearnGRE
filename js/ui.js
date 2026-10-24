@@ -20,6 +20,8 @@ export const ICONS = {
   menu: `<svg class="svg-icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`,
   sun: `<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
   moon: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
+  clock: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  checkCircle: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
 };
 
 /**
@@ -175,8 +177,7 @@ export function renderSidebarGroups({
     };"></div>
         </div>
         <div class="group-item-meta">
-          <span>${groupWords.length}/30 từ</span>
-          <span>${masteredCount} thành thạo</span>
+          <span class="group-item-mastery-count">${masteredCount}/${totalCount} thành thạo</span>
         </div>
       </div>
     `;
@@ -196,6 +197,153 @@ export function renderSidebarGroups({
   });
 }
 
+let countdownInterval = null;
+
+/**
+ * Stops any active countdown timer.
+ */
+export function stopCountdownTimer() {
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
+}
+
+/**
+ * Formats remaining milliseconds into HH:MM:SS or Xd HH:MM:SS.
+ */
+export function formatCountdownTime(remainingMs) {
+  if (remainingMs <= 0) return '00:00:00';
+  const totalSec = Math.floor(remainingMs / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+
+  const hStr = String(hours).padStart(2, '0');
+  const mStr = String(minutes).padStart(2, '0');
+  const sStr = String(seconds).padStart(2, '0');
+
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    return `${days}d ${String(remHours).padStart(2, '0')}:${mStr}:${sStr}`;
+  }
+  return `${hStr}:${mStr}:${sStr}`;
+}
+
+/**
+ * Formats timestamp for human-friendly deadline description.
+ */
+export function formatTargetDateTime(timestamp) {
+  const targetDate = new Date(timestamp);
+  const today = new Date();
+  const isToday =
+    targetDate.getDate() === today.getDate() &&
+    targetDate.getMonth() === today.getMonth() &&
+    targetDate.getFullYear() === today.getFullYear();
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow =
+    targetDate.getDate() === tomorrow.getDate() &&
+    targetDate.getMonth() === tomorrow.getMonth() &&
+    targetDate.getFullYear() === tomorrow.getFullYear();
+
+  const hours = String(targetDate.getHours()).padStart(2, '0');
+  const minutes = String(targetDate.getMinutes()).padStart(2, '0');
+  const timeStr = `${hours}:${minutes}`;
+
+  if (isToday) return `Hôm nay lúc ${timeStr}`;
+  if (isTomorrow) return `Ngày mai lúc ${timeStr}`;
+  const day = String(targetDate.getDate()).padStart(2, '0');
+  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month} lúc ${timeStr}`;
+}
+
+/**
+ * Inspects storageData to calculate SRS review deadlines.
+ */
+export function getNextReviewInfo(storageData, currentGroup, vocabList) {
+  const now = Date.now();
+  const wordsWithReview = [];
+
+  for (const w of vocabList) {
+    const rec = storageData.words[w.id];
+    if (rec && rec.next_review) {
+      const reviewTime = new Date(rec.next_review).getTime();
+      if (!isNaN(reviewTime)) {
+        wordsWithReview.push({
+          id: w.id,
+          word: w.word,
+          group: w.group,
+          level: rec.level,
+          reviewTime,
+        });
+      }
+    }
+  }
+
+  const dueWords = wordsWithReview.filter((item) => item.reviewTime <= now);
+  const upcomingWords = wordsWithReview.filter((item) => item.reviewTime > now);
+  upcomingWords.sort((a, b) => a.reviewTime - b.reviewTime);
+
+  const groupDueWords = dueWords.filter((item) => item.group === currentGroup);
+
+  if (dueWords.length > 0) {
+    return {
+      status: 'due',
+      dueCount: dueWords.length,
+      groupDueCount: groupDueWords.length,
+      nearestTimestamp: null,
+      upcomingWordsCount: 0,
+      nearestGroup: null,
+    };
+  }
+
+  if (upcomingWords.length > 0) {
+    const nearest = upcomingWords[0];
+    const batchWords = upcomingWords.filter(
+      (item) => Math.abs(item.reviewTime - nearest.reviewTime) < 60000
+    );
+    return {
+      status: 'upcoming',
+      dueCount: 0,
+      groupDueCount: 0,
+      nearestTimestamp: nearest.reviewTime,
+      upcomingWordsCount: batchWords.length,
+      nearestGroup: nearest.group,
+      totalScheduledCount: upcomingWords.length,
+    };
+  }
+
+  return {
+    status: 'none',
+    dueCount: 0,
+    groupDueCount: 0,
+    nearestTimestamp: null,
+    upcomingWordsCount: 0,
+    nearestGroup: null,
+  };
+}
+
+function startCountdownTimer(targetTimestamp, onTick, onComplete) {
+  stopCountdownTimer();
+  if (!targetTimestamp) return;
+
+  function tick() {
+    const remaining = targetTimestamp - Date.now();
+    if (remaining <= 0) {
+      stopCountdownTimer();
+      onComplete();
+    } else {
+      onTick(remaining);
+    }
+  }
+
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
 /**
  * Renders the Group Overview / Dashboard screen.
  */
@@ -207,6 +355,8 @@ export function renderGroupDashboard({
   onStartSpeedMatch,
   onToggleFlag,
 }) {
+  stopCountdownTimer();
+
   const stage = document.getElementById('main-stage');
   const groupWords = vocabList.filter((w) => w.group === group);
 
@@ -223,6 +373,31 @@ export function renderGroupDashboard({
   }
 
   const masteryPercent = groupWords.length > 0 ? Math.round((masteredCount / groupWords.length) * 100) : 0;
+  const reviewInfo = getNextReviewInfo(storageData, group, vocabList);
+  const todaySessionsCount = storageData.progression.today_sessions_count || 0;
+
+  // Render initial countdown widget state
+  let countdownInitialVal = '--:--:--';
+  let countdownValClass = 'widget-metric-val font-mono';
+  let badgeClass = 'widget-badge badge-idle';
+  let badgeText = 'Chưa có lịch';
+  let subtextHtml = 'Chưa có từ trong chu kỳ SRS. Hãy hoàn thành 1 phiên học.';
+
+  if (reviewInfo.status === 'due') {
+    countdownInitialVal = 'Đến hạn ôn!';
+    countdownValClass = 'widget-metric-val font-mono text-success';
+    badgeClass = 'widget-badge badge-due-pulse';
+    badgeText = 'Đến hạn ngay';
+    const gNote = reviewInfo.groupDueCount > 0 ? ` (${reviewInfo.groupDueCount} từ Group ${group})` : '';
+    subtextHtml = `Có <strong>${reviewInfo.dueCount} từ</strong> cần ôn tập ngay${gNote}.`;
+  } else if (reviewInfo.status === 'upcoming') {
+    countdownInitialVal = formatCountdownTime(reviewInfo.nearestTimestamp - Date.now());
+    badgeClass = 'widget-badge badge-countdown';
+    badgeText = 'Đang đếm ngược';
+    const formattedTarget = formatTargetDateTime(reviewInfo.nearestTimestamp);
+    const gNote = reviewInfo.nearestGroup === group ? 'Group này' : `Group ${reviewInfo.nearestGroup}`;
+    subtextHtml = `Hạn ôn: <strong>${formattedTarget}</strong> (${reviewInfo.upcomingWordsCount} từ ${gNote}).`;
+  }
 
   stage.innerHTML = `
     <div class="dashboard-container animate-fade-in">
@@ -238,6 +413,46 @@ export function renderGroupDashboard({
           <button id="btn-start-adaptive" class="btn-primary">
             ${ICONS.arrowRight} Bắt đầu Phiên học
           </button>
+        </div>
+      </div>
+
+      <!-- Overview Metric Cards: Next Review Countdown & Today Sessions -->
+      <div class="dashboard-widgets-grid">
+        <div class="dashboard-widget-card" id="widget-next-review">
+          <div class="widget-header">
+            <div class="widget-title">
+              ${ICONS.clock}
+              <span>Lần ôn tiếp theo</span>
+            </div>
+            <span class="${badgeClass}" id="widget-review-badge">${badgeText}</span>
+          </div>
+          <div class="widget-body">
+            <div class="${countdownValClass}" id="widget-countdown-val">${countdownInitialVal}</div>
+          </div>
+          <div class="widget-footer" id="widget-countdown-subtext">
+            ${subtextHtml}
+          </div>
+        </div>
+
+        <div class="dashboard-widget-card" id="widget-today-sessions">
+          <div class="widget-header">
+            <div class="widget-title">
+              ${ICONS.checkCircle}
+              <span>Session hôm nay</span>
+            </div>
+            <span class="widget-badge ${todaySessionsCount >= 3 ? 'badge-success' : todaySessionsCount > 0 ? 'badge-active' : 'badge-idle'}">
+              ${todaySessionsCount >= 3 ? 'Đạt mục tiêu' : todaySessionsCount > 0 ? 'Đang học tốt' : 'Mục tiêu: 2-3'}
+            </span>
+          </div>
+          <div class="widget-body">
+            <div class="widget-metric-val font-mono">
+              <span class="widget-number">${todaySessionsCount}</span>
+              <span class="widget-unit">phiên</span>
+            </div>
+          </div>
+          <div class="widget-footer">
+            <span>${todaySessionsCount > 0 ? `Đã hoàn thành ${todaySessionsCount} phiên trong ngày` : 'Chưa hoàn thành phiên nào trong ngày'}</span>
+          </div>
         </div>
       </div>
 
@@ -288,6 +503,35 @@ export function renderGroupDashboard({
       </div>
     </div>
   `;
+
+  // Start live countdown timer if review is upcoming
+  if (reviewInfo.status === 'upcoming') {
+    startCountdownTimer(
+      reviewInfo.nearestTimestamp,
+      (remainingMs) => {
+        const valEl = document.getElementById('widget-countdown-val');
+        if (valEl) {
+          valEl.textContent = formatCountdownTime(remainingMs);
+        }
+      },
+      () => {
+        const valEl = document.getElementById('widget-countdown-val');
+        const badgeEl = document.getElementById('widget-review-badge');
+        const subtextEl = document.getElementById('widget-countdown-subtext');
+        if (valEl) {
+          valEl.textContent = 'Đến hạn ôn!';
+          valEl.className = 'widget-metric-val font-mono text-success';
+        }
+        if (badgeEl) {
+          badgeEl.className = 'widget-badge badge-due-pulse';
+          badgeEl.textContent = 'Đến hạn ngay';
+        }
+        if (subtextEl) {
+          subtextEl.innerHTML = 'Có từ đã đến hạn ôn tập ngay bây giờ.';
+        }
+      }
+    );
+  }
 
   // Bind Buttons
   document.getElementById('btn-start-adaptive')?.addEventListener('click', onStartSession);
@@ -1018,7 +1262,7 @@ export const renderFlashMistakeFeedback = renderFlashFeedback;
 /**
  * Renders the Session Summary screen.
  */
-export function renderSessionSummary({ metrics, onRestartSession, onReturnHome, onUnlockNextGroup }) {
+export function renderSessionSummary({ metrics, todaySessions = 0, onRestartSession, onReturnHome, onUnlockNextGroup }) {
   const stage = document.getElementById('main-stage');
   const progressHeader = document.getElementById('session-progress-header');
   if (progressHeader) progressHeader.style.display = 'none';
@@ -1027,7 +1271,9 @@ export function renderSessionSummary({ metrics, onRestartSession, onReturnHome, 
     <div class="summary-container animate-fade-in">
       <div class="summary-header">
         <div class="summary-title">Hoàn thành Phiên học!</div>
-        <div class="summary-subtitle">Dữ liệu tiến độ SRS đã được tự động lưu vào bộ nhớ trình duyệt.</div>
+        <div class="summary-subtitle">
+          ${todaySessions > 0 ? `Bạn đã hoàn thành <strong>${todaySessions} phiên</strong> hôm nay. ` : ''}Dữ liệu tiến độ SRS đã được tự động lưu vào bộ nhớ trình duyệt.
+        </div>
       </div>
 
       <div class="summary-stats-grid">
