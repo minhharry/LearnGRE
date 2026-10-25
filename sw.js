@@ -1,4 +1,5 @@
-const CACHE_NAME = 'learngre-v0';
+const CACHE_NAME = 'learngre-v1';
+const FONT_CACHE_NAME = 'learngre-fonts';
 
 // Static application assets to pre-cache on install
 const PRECACHE_ASSETS = [
@@ -21,17 +22,21 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
+      // Use cache: 'reload' to bypass the browser HTTP disk cache
+      // and guarantee that the latest files are fetched from the server.
+      const requests = PRECACHE_ASSETS.map((url) => new Request(url, { cache: 'reload' }));
+      return cache.addAll(requests);
     }).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
+  const allowedCaches = [CACHE_NAME, FONT_CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
-          if (name !== CACHE_NAME) {
+          if (!allowedCaches.includes(name)) {
             return caches.delete(name);
           }
         })
@@ -51,7 +56,7 @@ self.addEventListener('fetch', (event) => {
   // Handle Google Fonts (cache-first runtime caching)
   if (requestUrl.hostname.includes('fonts.googleapis.com') || requestUrl.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
-      caches.open('learngre-fonts').then(async (cache) => {
+      caches.open(FONT_CACHE_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(event.request);
         if (cachedResponse) {
           return cachedResponse;
@@ -70,7 +75,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy: Cache-First, fallback to Network with automatic cache update
+  // Strategy for HTML / Navigation requests: Network-First (fallback to Cache when offline)
+  // Ensures user always gets the latest HTML when online, preventing stale asset references
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cachedResponse = await caches.match(event.request);
+          return cachedResponse || caches.match('./index.html') || caches.match('./');
+        })
+    );
+    return;
+  }
+
+  // Strategy for static assets: Cache-First, fallback to Network with automatic cache update
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -88,11 +115,6 @@ self.addEventListener('fetch', (event) => {
         });
 
         return networkResponse;
-      }).catch(() => {
-        // Fallback for navigation requests when offline
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html') || caches.match('./');
-        }
       });
     })
   );
