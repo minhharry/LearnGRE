@@ -244,3 +244,36 @@ export function importProgressJson(jsonString) {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Returns all word items from vocabList that are currently due for SRS review across all groups.
+ */
+export function getDueWordsAcrossAllGroups(vocabList, storageData) {
+  const now = Date.now();
+  if (!storageData || !storageData.words || !Array.isArray(vocabList)) return [];
+  return vocabList.filter((word) => {
+    const record = storageData.words[word.id];
+    if (!record || !record.level || record.level <= 0 || !record.next_review) return false;
+    const reviewTime = new Date(record.next_review).getTime();
+    return !isNaN(reviewTime) && reviewTime <= now;
+  });
+}
+
+/**
+ * Counts total words due for SRS review across all groups.
+ */
+export function countDueWords(storageData) {
+  const now = Date.now();
+  let count = 0;
+  if (!storageData || !storageData.words) return 0;
+  for (const wordId of Object.keys(storageData.words)) {
+    const record = storageData.words[wordId];
+    if (record && record.level > 0 && record.next_review) {
+      const reviewTime = new Date(record.next_review).getTime();
+      if (!isNaN(reviewTime) && reviewTime <= now) {
+        count++;
+      }
+    }
+  }
+  return count;
+}

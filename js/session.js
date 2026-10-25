@@ -5,7 +5,7 @@
  */
 
 import { selectFlashDistractors, shuffleArray } from './distractor.js';
-import { ensureWordRecord } from './storage.js';
+import { ensureWordRecord, getDueWordsAcrossAllGroups } from './storage.js';
 
 export class SessionManager {
   /**
@@ -14,7 +14,7 @@ export class SessionManager {
    * @param {Array<Object>} options.vocabList - All vocab items.
    * @param {Array<Object>} options.questionTemplates - Pre-generated TC templates.
    * @param {Object} options.storageData - User's stored progress.
-   * @param {string} [options.mode='standard'] - 'standard' | 'errors' | 'speed_match_only'.
+   * @param {string} [options.mode='standard'] - 'standard' | 'errors' | 'speed_match_only' | 'all_due'.
    */
   constructor({ group, vocabList, questionTemplates, storageData, mode = 'standard' }) {
     this.group = group;
@@ -53,6 +53,29 @@ export class SessionManager {
     this.queue = [];
     const nowIso = new Date().toISOString();
     const groupWords = this.allVocab.filter((w) => w.group === this.group);
+
+    // If 'all_due' mode: focus on all words due for SRS review across all groups
+    if (this.mode === 'all_due') {
+      const dueWords = getDueWordsAcrossAllGroups(this.allVocab, this.storageData);
+      const selectedWords = dueWords.length > 0 ? shuffleArray(dueWords) : groupWords.slice(0, 8);
+
+      // Warm-up: 1 Speed Match (4 pairs) if >= 4 words
+      if (selectedWords.length >= 4) {
+        this.queue.push(this.createSpeedMatchQuestion(selectedWords.slice(0, 4)));
+      }
+
+      // Core: Interleaved TC and Flash Recall for ALL due words
+      for (let i = 0; i < selectedWords.length; i++) {
+        const word = selectedWords[i];
+        const hasTc = this.questionsByTargetId.has(word.id);
+        if (hasTc && (i % 2 === 0 || selectedWords.length < 6)) {
+          this.queue.push(this.createTcQuestion(word));
+        } else {
+          this.queue.push(this.createFlashRecallQuestion(word));
+        }
+      }
+      return;
+    }
 
     // If specific 'errors' mode, practice flagged words
     if (this.mode === 'errors') {
@@ -400,8 +423,8 @@ export class SessionManager {
     const isLastGroup = this.group >= TOTAL_GROUPS;
 
     const groupMasteryPercent = groupWords.length > 0 ? Math.round((level3Or4 / groupWords.length) * 100) : 0;
-    const canUnlockNext = level0 === 0 && !isLastGroup;
-    const isAllCompleted = groupMasteryPercent >= 85 && level0 === 0 && isLastGroup;
+    const canUnlockNext = this.mode === 'standard' && level0 === 0 && !isLastGroup;
+    const isAllCompleted = this.mode === 'standard' && groupMasteryPercent >= 85 && level0 === 0 && isLastGroup;
 
     return {
       totalAnswered,
@@ -412,6 +435,7 @@ export class SessionManager {
       groupMasteryPercent,
       canUnlockNext,
       isAllCompleted,
+      isAllDueSession: this.mode === 'all_due',
       nextGroup: !isLastGroup ? this.group + 1 : null,
     };
   }

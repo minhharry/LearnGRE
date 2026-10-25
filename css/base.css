@@ -384,6 +384,7 @@ a {
 [data-theme="dark"] .keycap.active,
 [data-theme="dark"] .keycap-pressed {
   background-color: var(--accent-hover);
+  color: #ffffff;
 }
 
 [data-theme="dark"] .streak-chip {
@@ -553,15 +554,16 @@ a {
 
 [data-theme="dark"] .btn-secondary:hover {
   background-color: #2d2d2d;
-  border-color: #454545;
+  border-color: #007acc;
   color: #ffffff;
 }
 
 [data-theme="dark"] .btn-primary {
-  background-color: #0e639c;
+  background-color: #007acc;
   color: #ffffff;
+  border-color: #007acc;
 }
 
 [data-theme="dark"] .btn-primary:hover {
-  background-color: #1177bb;
+  background-color: #0e639c;
 }

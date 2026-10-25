@@ -4,6 +4,8 @@
  * System: LearnGRE Zero-Friction Desktop-Web App
  */
 
+import { countDueWords } from './storage.js';
+
 // Clean SVG icon definitions (Strictly no emojis)
 export const ICONS = {
   streak: `<svg class="svg-icon streak-icon" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`,
@@ -22,6 +24,7 @@ export const ICONS = {
   moon: `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
   clock: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
   checkCircle: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+  bolt: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
 };
 
 /**
@@ -46,6 +49,7 @@ export function renderTopBar(data, isBackupDue) {
   const modeGuidedBtn = document.getElementById('mode-guided-btn');
   const modeCramBtn = document.getElementById('mode-cram-btn');
   const errorBadge = document.getElementById('error-nav-count');
+  const dueBadge = document.getElementById('due-nav-count');
 
   const streak = data.progression.daily_streak || 1;
   streakCount.textContent = streak;
@@ -67,6 +71,13 @@ export function renderTopBar(data, isBackupDue) {
   if (errorBadge) {
     errorBadge.textContent = flaggedCount;
     errorBadge.style.display = flaggedCount > 0 ? 'inline-flex' : 'none';
+  }
+
+  // Count words due for review across all groups
+  const dueCount = countDueWords(data);
+  if (dueBadge) {
+    dueBadge.textContent = dueCount;
+    dueBadge.style.display = dueCount > 0 ? 'inline-flex' : 'none';
   }
 
   if (backupBtn) {
@@ -354,6 +365,7 @@ export function renderGroupDashboard({
   onStartSession,
   onStartSpeedMatch,
   onToggleFlag,
+  onStartAllDueSession,
 }) {
   stopCountdownTimer();
 
@@ -374,6 +386,7 @@ export function renderGroupDashboard({
 
   const masteryPercent = groupWords.length > 0 ? Math.round((masteredCount / groupWords.length) * 100) : 0;
   const reviewInfo = getNextReviewInfo(storageData, group, vocabList);
+  const totalDueCount = countDueWords(storageData);
   const todaySessionsCount = storageData.progression.today_sessions_count || 0;
 
   // Render initial countdown widget state
@@ -385,33 +398,54 @@ export function renderGroupDashboard({
 
   if (reviewInfo.status === 'due') {
     countdownInitialVal = 'Đến hạn ôn!';
-    countdownValClass = 'widget-metric-val font-mono text-success';
-    badgeClass = 'widget-badge badge-due-pulse';
+    countdownValClass = 'widget-metric-val font-mono text-accent';
+    badgeClass = 'widget-badge badge-due';
     badgeText = 'Đến hạn ngay';
-    const gNote = reviewInfo.groupDueCount > 0 ? ` (${reviewInfo.groupDueCount} từ Group ${group})` : '';
-    subtextHtml = `Có <strong>${reviewInfo.dueCount} từ</strong> cần ôn tập ngay${gNote}.`;
+    const gNote = reviewInfo.groupDueCount > 0
+      ? ` (Group ${group} có ${reviewInfo.groupDueCount} từ)`
+      : ` (Group ${group} hiện chưa có từ tới hạn)`;
+    subtextHtml = `Có <strong>${reviewInfo.dueCount} từ</strong> đến hạn ôn toàn hệ thống${gNote}.`;
   } else if (reviewInfo.status === 'upcoming') {
     countdownInitialVal = formatCountdownTime(reviewInfo.nearestTimestamp - Date.now());
     badgeClass = 'widget-badge badge-countdown';
     badgeText = 'Đang đếm ngược';
     const formattedTarget = formatTargetDateTime(reviewInfo.nearestTimestamp);
     const gNote = reviewInfo.nearestGroup === group ? 'Group này' : `Group ${reviewInfo.nearestGroup}`;
-    subtextHtml = `Hạn ôn: <strong>${formattedTarget}</strong> (${reviewInfo.upcomingWordsCount} từ ${gNote}).`;
+    subtextHtml = `Hạn ôn tiếp theo: <strong>${formattedTarget}</strong> (${reviewInfo.upcomingWordsCount} từ ${gNote}).`;
   }
 
   stage.innerHTML = `
     <div class="dashboard-container animate-fade-in">
       <div class="dashboard-header">
         <div class="dashboard-title-group">
-          <h1>Group ${group} Vocabulary</h1>
-          <p>30 từ vựng học thuật chuẩn GRE - Tiến độ thành thạo: <strong>${masteryPercent}%</strong> (${masteredCount}/${groupWords.length} từ L3-L4)</p>
+          <div class="dashboard-group-tag">Học thuật GRE &bull; Luyện cấp tốc</div>
+          <h1 class="dashboard-title">Group ${group} Vocabulary</h1>
+          <div class="dashboard-metrics-row">
+            <div class="metric-pill">
+              <span class="metric-label">Quy mô:</span>
+              <span class="metric-value">30 từ</span>
+            </div>
+            <div class="metric-pill">
+              <span class="metric-label">Thành thạo (L3-L4):</span>
+              <span class="metric-value text-accent">${masteryPercent}% (${masteredCount}/30)</span>
+            </div>
+            <div class="metric-pill">
+              <span class="metric-label">Đang học:</span>
+              <span class="metric-value">${learningCount}</span>
+            </div>
+            ${unseenCount > 0 ? `<div class="metric-pill"><span class="metric-label">Chưa học:</span><span class="metric-value">${unseenCount}</span></div>` : ''}
+          </div>
         </div>
         <div class="dashboard-actions">
-          <button id="btn-start-speed-drill" class="btn-secondary">
-            Luyện Speed Match
+          <button id="btn-start-all-due" class="btn-due-review ${totalDueCount > 0 ? 'has-due' : ''}" title="Tổng ôn tập toàn bộ từ đã đến hạn ôn của tất cả các group (Phím tắt: R)">
+            ${ICONS.clock} <span>Tổng ôn tới hạn</span>
+            <span class="due-badge-pill">${totalDueCount}</span>
           </button>
-          <button id="btn-start-adaptive" class="btn-primary">
-            ${ICONS.arrowRight} Bắt đầu Phiên học
+          <button id="btn-start-speed-drill" class="btn-secondary" title="Luyện phản xạ nghĩa từ (Phím tắt: M)">
+            ${ICONS.bolt} <span>Speed Match</span>
+          </button>
+          <button id="btn-start-adaptive" class="btn-primary" title="Bắt đầu phiên học thích ứng (Phím tắt: Space)">
+            ${ICONS.arrowRight} <span>Vào Phiên học</span>
           </button>
         </div>
       </div>
@@ -429,8 +463,15 @@ export function renderGroupDashboard({
           <div class="widget-body">
             <div class="${countdownValClass}" id="widget-countdown-val">${countdownInitialVal}</div>
           </div>
-          <div class="widget-footer" id="widget-countdown-subtext">
+          <div class="widget-info-row" id="widget-countdown-subtext">
             ${subtextHtml}
+          </div>
+          <div class="widget-cta-row" id="widget-cta-container">
+            ${
+              reviewInfo.status === 'due'
+                ? `<button id="btn-widget-review-due" class="btn-widget-cta">${ICONS.arrowRight} <span>Ôn tập ngay ${reviewInfo.dueCount} từ tới hạn</span></button>`
+                : ''
+            }
           </div>
         </div>
 
@@ -438,7 +479,7 @@ export function renderGroupDashboard({
           <div class="widget-header">
             <div class="widget-title">
               ${ICONS.checkCircle}
-              <span>Session hôm nay</span>
+              <span>Phiên học hôm nay</span>
             </div>
             <span class="widget-badge ${todaySessionsCount >= 3 ? 'badge-success' : todaySessionsCount > 0 ? 'badge-active' : 'badge-idle'}">
               ${todaySessionsCount >= 3 ? 'Đạt mục tiêu' : todaySessionsCount > 0 ? 'Đang học tốt' : 'Mục tiêu: 2-3'}
@@ -447,11 +488,24 @@ export function renderGroupDashboard({
           <div class="widget-body">
             <div class="widget-metric-val font-mono">
               <span class="widget-number">${todaySessionsCount}</span>
-              <span class="widget-unit">phiên</span>
+              <span class="widget-unit">/ 3 phiên</span>
             </div>
           </div>
-          <div class="widget-footer">
-            <span>${todaySessionsCount > 0 ? `Đã hoàn thành ${todaySessionsCount} phiên trong ngày` : 'Chưa hoàn thành phiên nào trong ngày'}</span>
+          <div class="widget-session-tracker">
+            <div class="session-step-dot ${todaySessionsCount >= 1 ? 'completed' : 'pending'}" title="Phiên 1">
+              <span class="step-num">1</span>
+            </div>
+            <div class="session-step-line ${todaySessionsCount >= 2 ? 'completed' : ''}"></div>
+            <div class="session-step-dot ${todaySessionsCount >= 2 ? 'completed' : 'pending'}" title="Phiên 2">
+              <span class="step-num">2</span>
+            </div>
+            <div class="session-step-line ${todaySessionsCount >= 3 ? 'completed' : ''}"></div>
+            <div class="session-step-dot ${todaySessionsCount >= 3 ? 'completed' : 'pending'}" title="Phiên 3">
+              <span class="step-num">3</span>
+            </div>
+          </div>
+          <div class="widget-info-row">
+            <span>${todaySessionsCount >= 3 ? 'Xuất sắc! Bạn đã hoàn thành chỉ tiêu ôn luyện hôm nay.' : todaySessionsCount > 0 ? `Đã hoàn thành ${todaySessionsCount}/3 phiên. Hãy tiếp tục phát huy!` : 'Chưa có phiên nào hôm nay. Hãy bắt đầu ngay để duy trì chuỗi học!'}</span>
           </div>
         </div>
       </div>
@@ -462,9 +516,9 @@ export function renderGroupDashboard({
             <tr>
               <th style="width: 25%;">Từ vựng</th>
               <th style="width: 10%;">Từ loại</th>
-              <th style="width: 35%;">Nghĩa tiếng Việt</th>
-              <th style="width: 15%;">Cấp độ SRS</th>
-              <th style="width: 15%; text-align: right;">Thao tác</th>
+              <th style="width: 36%;">Nghĩa tiếng Việt</th>
+              <th style="width: 16%;">Cấp độ SRS</th>
+              <th style="width: 13%; text-align: right;">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -476,17 +530,18 @@ export function renderGroupDashboard({
                 <tr>
                   <td>
                     <div class="table-word-cell">
-                      <span>${w.word}</span>
+                      <span class="word-primary-text">${w.word}</span>
                       <button class="icon-btn audio-btn" data-word="${w.word}" title="Phát âm (P)">
                         ${ICONS.audio}
                       </button>
                     </div>
                   </td>
-                  <td><span class="badge badge-muted">${w.pos}</span></td>
-                  <td><span style="font-weight: 500; color: var(--text-body);">${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</span></td>
+                  <td><span class="pos-badge">${w.pos}</span></td>
+                  <td><span class="gloss-text">${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</span></td>
                   <td>
                     <span class="level-pill level-pill-${lvl}">
-                      Level ${lvl}
+                      <span class="level-dot"></span>
+                      <span>Level ${lvl}</span>
                     </span>
                   </td>
                   <td style="text-align: right;">
@@ -518,16 +573,34 @@ export function renderGroupDashboard({
         const valEl = document.getElementById('widget-countdown-val');
         const badgeEl = document.getElementById('widget-review-badge');
         const subtextEl = document.getElementById('widget-countdown-subtext');
+        const ctaEl = document.getElementById('widget-cta-container');
         if (valEl) {
           valEl.textContent = 'Đến hạn ôn!';
-          valEl.className = 'widget-metric-val font-mono text-success';
+          valEl.className = 'widget-metric-val font-mono text-accent';
         }
         if (badgeEl) {
-          badgeEl.className = 'widget-badge badge-due-pulse';
+          badgeEl.className = 'widget-badge badge-due';
           badgeEl.textContent = 'Đến hạn ngay';
         }
         if (subtextEl) {
           subtextEl.innerHTML = 'Có từ đã đến hạn ôn tập ngay bây giờ.';
+        }
+        if (ctaEl) {
+          ctaEl.innerHTML = `
+            <button id="btn-widget-review-due" class="btn-widget-cta">
+              ${ICONS.arrowRight} <span>Ôn tập ngay các từ tới hạn</span>
+            </button>
+          `;
+          document.getElementById('btn-widget-review-due')?.addEventListener('click', onStartAllDueSession);
+        }
+        const allDueBtn = document.getElementById('btn-start-all-due');
+        if (allDueBtn) {
+          allDueBtn.classList.add('has-due');
+          const pill = allDueBtn.querySelector('.due-badge-pill');
+          if (pill) {
+            const currentVal = parseInt(pill.textContent, 10) || 0;
+            pill.textContent = currentVal + 1;
+          }
         }
       }
     );
@@ -536,6 +609,8 @@ export function renderGroupDashboard({
   // Bind Buttons
   document.getElementById('btn-start-adaptive')?.addEventListener('click', onStartSession);
   document.getElementById('btn-start-speed-drill')?.addEventListener('click', onStartSpeedMatch);
+  document.getElementById('btn-start-all-due')?.addEventListener('click', onStartAllDueSession);
+  document.getElementById('btn-widget-review-due')?.addEventListener('click', onStartAllDueSession);
 
   // Bind Audio & Flag
   stage.querySelectorAll('.audio-btn').forEach((btn) => {
@@ -580,7 +655,7 @@ export function renderErrorNotebook({ vocabList, storageData, onStartErrorSessio
       ${
         flaggedWords.length === 0
           ? `
-        <div style="text-align: center; padding: 60px 20px; background: white; border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+        <div style="text-align: center; padding: 60px 20px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
           <div style="font-size: 16px; font-weight: 600; color: var(--text-title); margin-bottom: 8px;">Không có từ nào trong Sổ tay Câu sai!</div>
           <div style="font-size: 14px; color: var(--text-muted);">Các từ chọn sai hoặc bấm phím 'S' trong phiên học sẽ tự động được lưu vào đây.</div>
         </div>
@@ -590,12 +665,12 @@ export function renderErrorNotebook({ vocabList, storageData, onStartErrorSessio
           <table class="word-table">
             <thead>
               <tr>
-                <th>Từ vựng</th>
-                <th>Group</th>
-                <th>Từ loại</th>
-                <th>Nghĩa tiếng Việt</th>
-                <th>Số lần sai</th>
-                <th style="text-align: right;">Gỡ ghim</th>
+                <th style="width: 25%;">Từ vựng</th>
+                <th style="width: 12%;">Group</th>
+                <th style="width: 10%;">Từ loại</th>
+                <th style="width: 33%;">Nghĩa tiếng Việt</th>
+                <th style="width: 10%;">Số lần sai</th>
+                <th style="width: 10%; text-align: right;">Gỡ ghim</th>
               </tr>
             </thead>
             <tbody>
@@ -606,19 +681,19 @@ export function renderErrorNotebook({ vocabList, storageData, onStartErrorSessio
                   <tr>
                     <td>
                       <div class="table-word-cell">
-                        <span>${w.word}</span>
+                        <span class="word-primary-text">${w.word}</span>
                         <button class="icon-btn audio-btn" data-word="${w.word}">
                           ${ICONS.audio}
                         </button>
                       </div>
                     </td>
-                    <td>Group ${w.group}</td>
-                    <td><span class="badge badge-muted">${w.pos}</span></td>
-                    <td>${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</td>
-                    <td><span class="badge badge-red">${rec.mistake_count || 1} lần</span></td>
+                    <td><span class="domain-tag">Group ${w.group}</span></td>
+                    <td><span class="pos-badge">${w.pos}</span></td>
+                    <td><span class="gloss-text">${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</span></td>
+                    <td><span class="mistake-count-badge">${rec.mistake_count || 1} lần</span></td>
                     <td style="text-align: right;">
                       <button class="action-chip-btn flag-btn flagged" data-id="${w.id}">
-                        ${ICONS.close} Bỏ ghim
+                        ${ICONS.close} <span>Bỏ ghim</span>
                       </button>
                     </td>
                   </tr>
@@ -672,7 +747,7 @@ export function applyStreakAccent(streak) {
 /**
  * Renders Session Progress Header with correct / incorrect segment status.
  */
-export function renderSessionProgressHeader({ current, total, isRedemption, streak, results = [], theme = 'dark' }) {
+export function renderSessionProgressHeader({ current, total, isRedemption, streak, results = [], theme = 'dark', isAllDue = false }) {
   const progressHeader = document.getElementById('session-progress-header');
   if (!progressHeader) return;
 
@@ -699,6 +774,7 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
   progressHeader.innerHTML = `
     <div class="session-progress-left">
       <button id="session-home-btn" class="session-home-btn brand-logo-icon" title="Quay lại trang chủ" aria-label="Quay lại trang chủ">G</button>
+      ${isAllDue ? '<span class="badge badge-yellow" style="font-size: 11px; font-weight: 700;">Tổng ôn tới hạn</span>' : ''}
       ${isRedemption ? '<span class="badge badge-amber" style="font-size: 10.5px;">Gỡ lỗi</span>' : ''}
       <span class="session-counter-text">Câu ${current}/${total}</span>
     </div>
@@ -885,7 +961,7 @@ export function renderFlashRecallQuestion({
     <div class="question-viewport animate-fade-in">
       <div class="question-card">
         <div class="question-card-meta">
-          <span class="question-domain-tag">Flash Recall</span>
+          <span class="question-domain-tag">${question.targetWord && question.targetWord.group ? `Group ${question.targetWord.group} - ` : ''}Flash Recall</span>
           <div class="question-card-actions">
             <button id="btn-flash-audio" class="action-chip-btn" title="Phát âm (P)">
               ${ICONS.audio} <span>Nghe (P)</span>
@@ -990,7 +1066,7 @@ export function renderTcQuestion({
     <div class="question-viewport animate-fade-in">
       <div class="question-card">
         <div class="question-card-meta">
-          <span class="question-domain-tag">${question.domain}</span>
+          <span class="question-domain-tag">${question.targetWord && question.targetWord.group ? `Group ${question.targetWord.group} - ` : ''}${question.domain}</span>
           <div class="question-card-actions">
             <button id="btn-tc-audio" class="action-chip-btn" style="display: none;" title="Phát âm từ đúng (P)">
               ${ICONS.audio} <span>Nghe (P)</span>
@@ -1267,12 +1343,18 @@ export function renderSessionSummary({ metrics, todaySessions = 0, onRestartSess
   const progressHeader = document.getElementById('session-progress-header');
   if (progressHeader) progressHeader.style.display = 'none';
 
+  const isAllDue = Boolean(metrics.isAllDueSession);
+
   stage.innerHTML = `
     <div class="summary-container animate-fade-in">
       <div class="summary-header">
-        <div class="summary-title">Hoàn thành Phiên học!</div>
+        <div class="summary-title">${isAllDue ? 'Hoàn tất Tổng ôn tập tới hạn!' : 'Hoàn thành Phiên học!'}</div>
         <div class="summary-subtitle">
-          ${todaySessions > 0 ? `Bạn đã hoàn thành <strong>${todaySessions} phiên</strong> hôm nay. ` : ''}Dữ liệu tiến độ SRS đã được tự động lưu vào bộ nhớ trình duyệt.
+          ${
+            isAllDue
+              ? 'Tất cả các từ vựng đến hạn trên toàn bộ các Group đã được củng cố và kéo dài chu kỳ ghi nhớ SRS.'
+              : `${todaySessions > 0 ? `Bạn đã hoàn thành <strong>${todaySessions} phiên</strong> hôm nay. ` : ''}Dữ liệu tiến độ SRS đã được tự động lưu vào bộ nhớ trình duyệt.`
+          }
         </div>
       </div>
 
@@ -1295,8 +1377,8 @@ export function renderSessionSummary({ metrics, todaySessions = 0, onRestartSess
         </div>
 
         <div class="stat-card">
-          <div class="stat-value">${metrics.groupMasteryPercent}%</div>
-          <div class="stat-label">Tiến độ Group</div>
+          <div class="stat-value">${isAllDue ? `${metrics.correctCount}/${metrics.totalAnswered}` : `${metrics.groupMasteryPercent}%`}</div>
+          <div class="stat-label">${isAllDue ? 'Từ tới hạn hoàn thành' : 'Tiến độ Group'}</div>
         </div>
       </div>
 
@@ -1334,7 +1416,7 @@ export function renderSessionSummary({ metrics, todaySessions = 0, onRestartSess
           Quay lại Danh sách Từ
         </button>
         <button id="btn-summary-restart" class="btn-primary">
-          ${ICONS.arrowRight} Luyện tiếp phiên mới
+          ${ICONS.arrowRight} ${isAllDue ? 'Tiếp tục Ôn tập' : 'Luyện tiếp phiên mới'}
         </button>
       </div>
     </div>
@@ -1343,4 +1425,34 @@ export function renderSessionSummary({ metrics, todaySessions = 0, onRestartSess
   document.getElementById('btn-summary-home')?.addEventListener('click', onReturnHome);
   document.getElementById('btn-summary-restart')?.addEventListener('click', onRestartSession);
   document.getElementById('btn-unlock-next-group')?.addEventListener('click', onUnlockNextGroup);
+}
+
+/**
+ * Displays a non-intrusive floating toast notification.
+ */
+export function showToast(message, type = 'info') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast-notification toast-${type} animate-fade-in`;
+  toast.innerHTML = `
+    <div class="toast-content">
+      <span>${message}</span>
+    </div>
+  `;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('toast-hide');
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 3200);
 }

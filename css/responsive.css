@@ -528,7 +528,8 @@
     width: 100%;
   }
 
-  .dashboard-title-group h1 {
+  .dashboard-title-group h1,
+  .dashboard-title-group .dashboard-title {
     font-size: 22px;
     line-height: 1.25;
     word-break: break-word;
@@ -547,7 +548,8 @@
   }
 
   .dashboard-actions .btn-primary,
-  .dashboard-actions .btn-secondary {
+  .dashboard-actions .btn-secondary,
+  .dashboard-actions .btn-due-review {
     width: 100%;
     justify-content: center;
     box-sizing: border-box;

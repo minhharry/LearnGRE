@@ -13,6 +13,7 @@ import {
   encodeProgressCode,
   decodeProgressCode,
   recordCompletedSession,
+  countDueWords,
 } from './storage.js';
 import { evaluateWordAnswer } from './srs.js';
 import { SessionManager } from './session.js';
@@ -34,6 +35,7 @@ import {
   renderSessionSummary,
   renderThemeButton,
   stopCountdownTimer,
+  showToast,
   ICONS,
 } from './ui.js';
 
@@ -169,6 +171,7 @@ class AppController {
         onStartSession: () => this.startSession('standard'),
         onStartSpeedMatch: () => this.startSession('speed_match_only'),
         onToggleFlag: (wordId) => this.toggleWordFlag(wordId),
+        onStartAllDueSession: () => this.handleStartAllDueSession(),
       });
     } else if (this.currentView === 'errors') {
       renderErrorNotebook({
@@ -178,6 +181,18 @@ class AppController {
         onToggleFlag: (wordId) => this.toggleWordFlag(wordId),
       });
     }
+  }
+
+  /**
+   * Starts a focused review session of all words due for SRS review across all groups.
+   */
+  handleStartAllDueSession() {
+    const dueCount = countDueWords(this.storageData);
+    if (dueCount === 0) {
+      showToast('Hiện tại chưa có từ nào tới hạn ôn tập của bất kỳ Group nào! Tất cả từ vựng đều đang trong chu kỳ nhớ an toàn.', 'info');
+      return;
+    }
+    this.startSession('all_due');
   }
 
   toggleWordFlag(wordId) {
@@ -233,7 +248,13 @@ class AppController {
       renderSessionSummary({
         metrics,
         todaySessions,
-        onRestartSession: () => this.startSession('standard'),
+        onRestartSession: () => {
+          if (metrics.isAllDueSession) {
+            this.handleStartAllDueSession();
+          } else {
+            this.startSession('standard');
+          }
+        },
         onReturnHome: () => {
           this.currentView = 'dashboard';
           this.renderSidebar();
@@ -264,6 +285,7 @@ class AppController {
       streak: this.storageData.progression.daily_streak || 1,
       results: this.activeSession.results,
       theme: this.storageData.ui_prefs.theme || 'dark',
+      isAllDue: this.activeSession?.mode === 'all_due',
     });
 
     document.getElementById('session-theme-btn')?.addEventListener('click', () => {
@@ -451,6 +473,12 @@ class AppController {
       this.closeDrawer();
     });
 
+    // Nav Item: All Due Words
+    document.getElementById('nav-all-due')?.addEventListener('click', () => {
+      this.handleStartAllDueSession();
+      this.closeDrawer();
+    });
+
     // Nav Item: Error Notebook
     document.getElementById('nav-error-notebook')?.addEventListener('click', () => {
       this.currentView = 'errors';
@@ -614,6 +642,17 @@ class AppController {
       if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         shortcutsModal.classList.toggle('active');
         return;
+      }
+
+      // Key R: Review all due words when in dashboard
+      if (this.currentView === 'dashboard') {
+        if (e.key === 'r' || e.key === 'R') {
+          if (!shortcutsModal.classList.contains('active') && !backupModal.classList.contains('active')) {
+            e.preventDefault();
+            this.handleStartAllDueSession();
+            return;
+          }
+        }
       }
 
       // If in active session

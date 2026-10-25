@@ -1,4 +1,4 @@
-const CACHE_NAME = 'learngre-v1';
+const CACHE_NAME = 'learngre-v0';
 
 // Static application assets to pre-cache on install
 const PRECACHE_ASSETS = [
