@@ -9,6 +9,7 @@ import argparse
 import csv
 import json
 import re
+import sqlite3
 import sys
 import time
 from collections import Counter, defaultdict, deque
@@ -270,6 +271,13 @@ def sanitize_vocabulary_forms(
 
 WORDNET_LEMMATIZER = WordNetLemmatizer()
 
+PART_OF_SPEECH_TAG_MAPPING: Dict[str, str] = {
+    "noun": "N",
+    "verb": "V",
+    "adj": "A",
+    "adv": "D",
+}
+
 FALLBACK_VIETNAMESE_GLOSS: Dict[str, str] = {
     "arcane": "bí ẩn, huyền bí, khó hiểu",
     "hodgepodge": "mớ hỗn tạp, mớ linh tinh, mớ xà bần",
@@ -279,23 +287,119 @@ FALLBACK_VIETNAMESE_GLOSS: Dict[str, str] = {
     "cataclysmic": "thảm họa, biến động dữ dội, tàn khốc",
     "duplicitous": "gian dối, hai mặt, lừa gạt",
     "serendipitous": "tình cờ may mắn, ngẫu nhiên may mắn",
+    "diminutive": "nhỏ bé, bé tí, tí hon",
+    "comity": "sự hòa thuận, tình bằng hữu, phép lịch sự",
 }
 
 
-def load_anhviet_dictionary(file_path: Path) -> Dict[str, List[str]]:
+def strip_leading_parenthetical_segments(raw_text: str) -> str:
+    """Strip any leading parenthesized metadata tags, including nested parentheses."""
+    cleaned_text = raw_text.strip()
+    while cleaned_text.startswith("("):
+        depth = 0
+        matching_end_index = -1
+        for index, character in enumerate(cleaned_text):
+            if character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+                if depth == 0:
+                    matching_end_index = index
+                    break
+        if matching_end_index != -1:
+            cleaned_text = cleaned_text[matching_end_index + 1:].strip()
+        else:
+            break
+    return cleaned_text
+
+
+def is_uninformative_definition(definition_text: str) -> bool:
+    """Check if definition is purely grammatical cross-reference or participle note."""
+    lowered_text = definition_text.lower().strip()
+    uninformative_prefixes = (
+        "xem ",
+        "dạng phân từ",
+        "phân từ của",
+        "ngôi thứ ba",
+        "thì quá khứ",
+        "dạng so sánh",
+    )
+    return any(lowered_text.startswith(prefix) for prefix in uninformative_prefixes)
+
+
+def clean_vietnamese_gloss_text(raw_gloss_text: str) -> str:
+    """Normalize whitespace and strip leading or trailing punctuation from a gloss segment."""
+    cleaned_text = strip_leading_parenthetical_segments(raw_gloss_text)
+    cleaned_text = re.sub(r"^[+#\s]+", "", cleaned_text).strip()
+    cleaned_text = re.sub(r"\s*;\s*", ", ", cleaned_text)
+    cleaned_text = re.sub(
+        r"\((?:nghĩa bóng|thông tục|thường|hiếm|cổ|khẩu ngữ|đùa cợt|châm biếm)[^)]*\)",
+        "",
+        cleaned_text,
+        flags=re.IGNORECASE,
+    )
+    cleaned_text = re.sub(r"\s+([,;.])", r"\1", cleaned_text)
+    cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
+    cleaned_text = re.sub(r"^[;,.\s]+|[;,.\s]+$", "", cleaned_text).strip()
+    if cleaned_text:
+        cleaned_text = cleaned_text[0].lower() + cleaned_text[1:]
+    return cleaned_text
+
+
+def load_sqlite_dictionary(
+    database_file_path: Path,
+) -> Dict[str, List[Tuple[Optional[str], str]]]:
     """
-    Parse StarDict format anhviet109K.txt dictionary file into an in-memory dictionary.
-    Maps lowercase English headwords to lists of cleaned Vietnamese definition strings.
+    Load English-Vietnamese dictionary from SQLite database file into memory.
+    Maps lowercase English headwords to lists of (part_of_speech, definition_text) tuples.
     """
+    if not database_file_path.is_file():
+        sys.stderr.write(
+            f"Warning: Dictionary SQLite database not found at: {database_file_path}\n"
+        )
+        return {}
+
+    sqlite_connection = sqlite3.connect(database_file_path)
+    sqlite_cursor = sqlite_connection.cursor()
+
+    query_statement = """
+        SELECT w.word, d.pos, d.definition
+        FROM words w
+        JOIN word_definitions wd ON w.id = wd.word_id
+        JOIN definitions d ON wd.definition_id = d.id
+        ORDER BY w.word, wd.id
+    """
+    sqlite_cursor.execute(query_statement)
+    database_rows = sqlite_cursor.fetchall()
+    sqlite_connection.close()
+
+    dictionary_data: Dict[str, List[Tuple[Optional[str], str]]] = defaultdict(list)
+    for headword, pos_tag, definition_text in database_rows:
+        dictionary_data[headword.lower().strip()].append(
+            (pos_tag, definition_text.strip())
+        )
+
+    return dict(dictionary_data)
+
+
+def load_anhviet_dictionary(
+    file_path: Path,
+) -> Dict[str, List[Tuple[Optional[str], str]]]:
+    """
+    Compatibility wrapper: loads dictionary from SQLite database if .db/.sqlite,
+    or falls back to legacy StarDict text format if text file.
+    """
+    if file_path.suffix.lower() in [".db", ".sqlite", ".sqlite3"]:
+        return load_sqlite_dictionary(file_path)
+
     if not file_path.is_file():
         sys.stderr.write(
             f"Warning: Anh-Viet dictionary file not found at: {file_path}\n"
         )
         return {}
 
-    dictionary: Dict[str, List[str]] = {}
+    dictionary_data: Dict[str, List[Tuple[Optional[str], str]]] = defaultdict(list)
     current_headword: Optional[str] = None
-    current_meanings: List[str] = []
 
     with open(file_path, mode="r", encoding="utf-8", errors="ignore") as file_handle:
         for raw_line in file_handle:
@@ -303,41 +407,29 @@ def load_anhviet_dictionary(file_path: Path) -> Dict[str, List[str]]:
             if not cleaned_line:
                 continue
             if cleaned_line.startswith("@"):
-                if current_headword and current_meanings:
-                    dictionary[current_headword] = current_meanings
                 header_parts = cleaned_line[1:].split("/", 1)
                 current_headword = header_parts[0].strip().lower()
-                current_meanings = []
-            elif cleaned_line.startswith("-"):
+            elif cleaned_line.startswith("-") and current_headword:
                 raw_meaning = cleaned_line[1:].strip()
-                # Remove parenthetical contextual or grammatical notes e.g. (+ in, with)
                 without_parentheses = re.sub(r"\([^)]*\)", "", raw_meaning).strip()
                 cleaned_meaning = re.sub(r"^[+]\s*", "", without_parentheses).strip()
                 if cleaned_meaning and not cleaned_meaning.startswith("xem "):
-                    current_meanings.append(cleaned_meaning)
+                    dictionary_data[current_headword].append((None, cleaned_meaning))
 
-        if current_headword and current_meanings:
-            dictionary[current_headword] = current_meanings
-
-    return dictionary
-
-
-def clean_vietnamese_gloss_text(raw_gloss_text: str) -> str:
-    """Normalize whitespace and strip leading or trailing punctuation from a gloss segment."""
-    normalized_whitespace = re.sub(r"\s+", " ", raw_gloss_text).strip()
-    cleaned_delimiters = re.sub(r"\s*;\s*", ", ", normalized_whitespace)
-    return re.sub(r"^[;,.\s]+|[;,.\s]+$", "", cleaned_delimiters)
+    return dict(dictionary_data)
 
 
 def get_vietnamese_gloss(
     target_word: str,
-    anhviet_dictionary: Dict[str, List[str]],
+    dictionary_entries: Dict[str, List[Tuple[Optional[str], str]]],
     lemmatizer: WordNetLemmatizer,
+    target_pos: Optional[str] = None,
     max_gloss_senses: int = 2,
 ) -> str:
     """
-    Retrieve concise, natural Vietnamese gloss from the loaded Anh-Viet dictionary.
-    Applies hyphenation, British/American spelling normalization, lemmatization, and curated fallbacks.
+    Retrieve concise, natural Vietnamese gloss from the loaded dictionary database.
+    Applies hyphenation, British/American spelling normalization, lemmatization,
+    part-of-speech prioritization, and curated fallbacks.
     """
     normalized_word = target_word.lower().strip()
 
@@ -354,17 +446,36 @@ def get_vietnamese_gloss(
         lemmatizer.lemmatize(normalized_word, "a"),
     ]
 
-    matched_meanings: List[str] = []
+    matched_entries: List[Tuple[Optional[str], str]] = []
     for candidate_key in candidate_lookup_keys:
-        if candidate_key in anhviet_dictionary and anhviet_dictionary[candidate_key]:
-            matched_meanings = anhviet_dictionary[candidate_key]
+        if candidate_key in dictionary_entries and dictionary_entries[candidate_key]:
+            matched_entries = dictionary_entries[candidate_key]
             break
 
-    if not matched_meanings and normalized_word in FALLBACK_VIETNAMESE_GLOSS:
+    if not matched_entries and normalized_word in FALLBACK_VIETNAMESE_GLOSS:
         return FALLBACK_VIETNAMESE_GLOSS[normalized_word]
 
+    target_database_pos = (
+        PART_OF_SPEECH_TAG_MAPPING.get(target_pos.lower()) if target_pos else None
+    )
+
+    prioritized_meanings: List[str] = []
+    other_meanings: List[str] = []
+
+    for pos_tag, raw_meaning in matched_entries:
+        if is_uninformative_definition(raw_meaning):
+            continue
+        if target_database_pos and pos_tag == target_database_pos:
+            prioritized_meanings.append(raw_meaning)
+        else:
+            other_meanings.append(raw_meaning)
+
+    ordered_meanings = prioritized_meanings + other_meanings
+    if not ordered_meanings and matched_entries:
+        ordered_meanings = [entry[1] for entry in matched_entries]
+
     cleaned_meanings: List[str] = []
-    for raw_meaning in matched_meanings:
+    for raw_meaning in ordered_meanings:
         cleaned_meaning = clean_vietnamese_gloss_text(raw_meaning)
         if cleaned_meaning and cleaned_meaning not in cleaned_meanings:
             cleaned_meanings.append(cleaned_meaning)
@@ -563,14 +674,19 @@ def normalize_vocabulary_entries(
     max_vi_gloss_senses = int(vocab_gen_config.get("max_vi_gloss_senses", 2))
 
     paths_config = configuration.get("paths", {})
-    anhviet_dictionary_path = Path(
-        paths_config.get("anhviet_dict", "scripts/anhviet109K.txt")
+    dictionary_database_path = Path(
+        paths_config.get(
+            "dictionary_db",
+            paths_config.get("anhviet_dict", "scripts/dictionary_en_vi.db"),
+        )
     )
 
-    sys.stdout.write(f"Loading Anh-Viet dictionary from {anhviet_dictionary_path}...\n")
-    anhviet_dictionary = load_anhviet_dictionary(anhviet_dictionary_path)
     sys.stdout.write(
-        f"Loaded {len(anhviet_dictionary)} dictionary entries into memory.\n"
+        f"Loading English-Vietnamese dictionary from {dictionary_database_path}...\n"
+    )
+    dictionary_entries = load_sqlite_dictionary(dictionary_database_path)
+    sys.stdout.write(
+        f"Loaded {len(dictionary_entries)} dictionary headwords into memory.\n"
     )
 
     existing_vocab_records = load_existing_jsonl_records(
@@ -647,11 +763,12 @@ def normalize_vocabulary_entries(
             if not cleaned_definitions:
                 cleaned_definitions = [cleaned_raw_definition]
 
-            # 4. Extract Vietnamese gloss from Anh-Viet dictionary
+            # 4. Extract Vietnamese gloss from dictionary database
             cleaned_vi_gloss = get_vietnamese_gloss(
                 target_word=word,
-                anhviet_dictionary=anhviet_dictionary,
+                dictionary_entries=dictionary_entries,
                 lemmatizer=WORDNET_LEMMATIZER,
+                target_pos=detected_pos,
                 max_gloss_senses=max_vi_gloss_senses,
             )
 
