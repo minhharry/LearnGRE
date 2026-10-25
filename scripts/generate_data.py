@@ -1090,7 +1090,7 @@ def generate_text_completion_questions(
             },
             "rationale": {
                 "type": "string",
-                "description": "Insightful Vietnamese rationale (2-3 sentences) analyzing why the target word is the only semantically fitting choice. Accurately use the target word, never confusing it with similar English words.",
+                "description": "Vietnamese translation of the complete sentence, with difficult or key English words placed in parentheses right after their Vietnamese translations (e.g. '...người mới bắt đầu (neophyte)...'). Keep it concise without lengthy explanation.",
             },
         },
         "required": [
@@ -1118,8 +1118,16 @@ def generate_text_completion_questions(
         "3. ZERO-LEAKAGE IN CLUE & SENTENCE:\n"
         "   - Never use any other forms, stems, or derivations of the target word anywhere in the sentence.\n"
         "   - The 'clue' must only quote the contextual trigger or structural pivot; it MUST NEVER contain the target word itself.\n"
-        "4. Rationale: Write an insightful Vietnamese rationale (2-3 sentences) analyzing why the target word is the only semantically fitting choice.\n"
-        "5. Adhere strictly to the JSON schema."
+        "4. Rationale: Translate the complete sentence into natural Vietnamese, adding the corresponding English word in parentheses right after difficult or key words (especially the target word and tricky vocabulary, e.g. 'tạm thời (ephemeral)'). Do not write lengthy analytical explanations.\n"
+        "5. Adhere strictly to the JSON schema.\n\n"
+        "Example Output:\n"
+        "{\n"
+        '  "domain": "Art History",\n'
+        '  "logic_blueprint": "Contrast between permanent cultural impact and fleeting popularity forces the word ephemeral.",\n'
+        '  "complete_sentence": "Although critics predicted the movement would exert lasting influence, its popularity proved entirely ephemeral, vanishing within a single season.",\n'
+        '  "clue": "Although critics predicted... lasting influence, its popularity proved entirely [BLANK], vanishing within a single season",\n'
+        '  "rationale": "Dù các nhà phê bình từng dự đoán phong trào sẽ tạo ra ảnh hưởng lâu dài (lasting influence), độ phổ biến của nó hóa ra lại hoàn toàn phù du / ngắn ngủi (ephemeral), nhanh chóng biến mất chỉ trong một mùa."\n'
+        "}"
     )
 
     # Filter target vocabulary records for requested groups
