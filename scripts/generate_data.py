@@ -1086,11 +1086,11 @@ def generate_text_completion_questions(
             },
             "clue": {
                 "type": "string",
-                "description": "The exact clause or keywords from complete_sentence that serve as the context clue.",
+                "description": "Short excerpt of key context words or structural pivot from complete_sentence that reveals the meaning of the blank. NEVER include the target word itself; replace with [BLANK] or omit it.",
             },
             "rationale": {
                 "type": "string",
-                "description": "Insightful Vietnamese rationale (2-3 sentences) analyzing why the target word is the only semantically fitting choice.",
+                "description": "Insightful Vietnamese rationale (2-3 sentences) analyzing why the target word is the only semantically fitting choice. Accurately use the target word, never confusing it with similar English words.",
             },
         },
         "required": [
@@ -1115,7 +1115,9 @@ def generate_text_completion_questions(
         "     * If ADJECTIVE: after linking verb ('remained entirely [TARGET]', 'rendered the policy [TARGET]', 'deemed [TARGET]').\n"
         "     * If NOUN: singular uninflected noun ('a profound [TARGET]').\n"
         "     * If ADVERB: modifying base verb or adjective ('proceeded [TARGET]').\n"
-        "3. ZERO-LEAKAGE: Never use any other forms, stems, or derivations of the target word anywhere in the sentence.\n"
+        "3. ZERO-LEAKAGE IN CLUE & SENTENCE:\n"
+        "   - Never use any other forms, stems, or derivations of the target word anywhere in the sentence.\n"
+        "   - The 'clue' must only quote the contextual trigger or structural pivot; it MUST NEVER contain the target word itself.\n"
         "4. Rationale: Write an insightful Vietnamese rationale (2-3 sentences) analyzing why the target word is the only semantically fitting choice.\n"
         "5. Adhere strictly to the JSON schema."
     )
@@ -1175,6 +1177,12 @@ def generate_text_completion_questions(
                     )
                 )
                 if not leakage_detected and existing_sentence not in generated_sentences_for_word:
+                    # Sanitize clue in existing record if it leaked target word
+                    existing_clue = existing_record.get("clue", "")
+                    if re.search(rf"\b{re.escape(target_word.lower())}\b", existing_clue, re.IGNORECASE):
+                        existing_record["clue"] = re.sub(
+                            rf"\b{re.escape(target_word)}\b", "[BLANK]", existing_clue, flags=re.IGNORECASE
+                        ).strip("\"' ")
                     generated_sentences_for_word.append(existing_sentence)
                     continue
 
@@ -1323,6 +1331,19 @@ def generate_text_completion_questions(
                     distractor not in target_cluster
                 ), f"Distractor '{distractor}' shares synonym cluster with target '{target_word}' in {question_id}!"
 
+            # Post-process & sanitize clue (Zero-leakage safeguard)
+            cleaned_clue = final_clue
+            # If clue explicitly repeats target word or inflected/derivative forms, replace with [BLANK]
+            clue_target_pattern = re.compile(rf"\b{re.escape(target_word)}\b", re.IGNORECASE)
+            cleaned_clue = clue_target_pattern.sub("[BLANK]", cleaned_clue)
+            for deriv in forbidden_derivations:
+                if len(deriv) > 2:
+                    cleaned_clue = re.sub(rf"\b{re.escape(deriv)}\b", "[BLANK]", cleaned_clue, flags=re.IGNORECASE)
+            # Remove redundant quotes or repetitive prefixes
+            cleaned_clue = cleaned_clue.strip("\"' ")
+            if not cleaned_clue:
+                cleaned_clue = "contextual contrast / semantic pivot"
+
             question_record = {
                 "id": question_id,
                 "target_id": target_id,
@@ -1331,7 +1352,7 @@ def generate_text_completion_questions(
                 "sentence": normalized_sentence,
                 "pos_required": target_pos,
                 "form_required": "base",
-                "clue": final_clue,
+                "clue": cleaned_clue,
                 "correct_answer": target_word,
                 "distractors": distractors,
                 "rationale": final_rationale,
