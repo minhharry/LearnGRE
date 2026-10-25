@@ -485,9 +485,9 @@ export function renderOverviewDashboard({
 
       let level = 0;
       if (!isFuture) {
-        if (count >= 20) level = 4;
-        else if (count >= 10) level = 3;
-        else if (count >= 5) level = 2;
+        if (count >= 4) level = 4;
+        else if (count >= 3) level = 3;
+        else if (count >= 2) level = 2;
         else if (count >= 1) level = 1;
       }
 
@@ -676,8 +676,8 @@ export function renderOverviewDashboard({
           </div>
           <div class="heatmap-card-stats">
             <div class="heatmap-stat-item">
-              <span>Tổng hoạt động:</span>
-              <strong>${annualTotalActivity}</strong>
+              <span>Tổng phiên học:</span>
+              <strong>${annualTotalActivity} phiên</strong>
             </div>
             <div class="heatmap-stat-item">
               <span>Ngày học tập:</span>
@@ -726,22 +726,22 @@ export function renderOverviewDashboard({
 
         <!-- Mobile Touch Info Bar -->
         <div id="heatmap-selected-info" class="heatmap-selected-info">
-          <span>Chạm vào ô ngày bất kỳ để xem chi tiết hoạt động</span>
+          <span>Chạm vào ô ngày bất kỳ để xem chi tiết phiên học</span>
         </div>
 
         <!-- Heatmap Footer with Legend -->
         <div class="heatmap-card-footer">
           <div style="font-size: 12px; color: var(--text-muted);">
-            Mỗi ô đại diện cho 1 ngày; hoạt động tính theo số câu hỏi và phiên luyện tập SRS được ghi nhận.
+            Mỗi ô đại diện cho 1 ngày; hiển thị theo số phiên học hoàn thành trong ngày.
           </div>
           <div class="heatmap-legend">
             <span>Ít</span>
             <div class="heatmap-legend-cells">
-              <div class="heatmap-cell level-0" title="0 hoạt động"></div>
-              <div class="heatmap-cell level-1" title="1 - 4 hoạt động"></div>
-              <div class="heatmap-cell level-2" title="5 - 9 hoạt động"></div>
-              <div class="heatmap-cell level-3" title="10 - 19 hoạt động"></div>
-              <div class="heatmap-cell level-4" title="20+ hoạt động"></div>
+              <div class="heatmap-cell level-0" title="0 phiên"></div>
+              <div class="heatmap-cell level-1" title="1 phiên"></div>
+              <div class="heatmap-cell level-2" title="2 phiên"></div>
+              <div class="heatmap-cell level-3" title="3 phiên"></div>
+              <div class="heatmap-cell level-4" title="4+ phiên"></div>
             </div>
             <span>Nhiều</span>
           </div>
@@ -893,8 +893,8 @@ export function renderOverviewDashboard({
       const formattedDate = `${dayName}, ${d}/${m}/${y}`;
 
       const countText = count === 0
-        ? 'Chưa có hoạt động học tập'
-        : `<strong>${count}</strong> hoạt động học tập SRS`;
+        ? 'Chưa có phiên học nào'
+        : `<strong>${count}</strong> phiên học đã hoàn thành`;
 
       cells.forEach((c) => c.classList.remove('is-selected'));
       cell.classList.add('is-selected');
@@ -922,8 +922,8 @@ export function renderOverviewDashboard({
         const formattedDate = `${dayName}, ngày ${d}/${m}/${y}`;
 
         const countText = count === 0
-          ? 'Chưa có hoạt động học tập'
-          : `<strong>${count}</strong> hoạt động học tập SRS`;
+          ? 'Chưa có phiên học nào'
+          : `<strong>${count}</strong> phiên học hoàn thành`;
 
         tooltip.innerHTML = `<div>${countText}</div><div style="font-size: 11px; opacity: 0.8; margin-top: 2px;">${formattedDate}</div>`;
 

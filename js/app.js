@@ -461,7 +461,6 @@ class AppController {
     );
 
     this.storageData.words[word.id] = updatedRecord;
-    recordDailyActivity(this.storageData, 1);
 
     if (levelPromoted) {
       this.activeSession.promotedWordIds.add(word.id);

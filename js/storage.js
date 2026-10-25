@@ -45,35 +45,6 @@ export function createDefaultState() {
 }
 
 /**
- * Seeds baseline activity records if user has an active streak or words learned.
- */
-function seedBaselineActivityIfEmpty(data) {
-  if (!data.activity) {
-    data.activity = {};
-  }
-  const activityKeys = Object.keys(data.activity);
-  const streak = data.progression?.daily_streak || 1;
-  const wordCount = Object.keys(data.words || {}).length;
-
-  if (activityKeys.length === 0 && (streak > 0 || wordCount > 0)) {
-    const now = new Date();
-    const daysToSeed = Math.max(streak, 1);
-    for (let i = 0; i < daysToSeed; i++) {
-      const pastDate = new Date(now);
-      pastDate.setDate(now.getDate() - i);
-      const year = pastDate.getFullYear();
-      const month = String(pastDate.getMonth() + 1).padStart(2, '0');
-      const day = String(pastDate.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
-      const simulatedCount = i === 0
-        ? Math.max((data.progression.today_sessions_count || 0) * 15, 8)
-        : ((i * 7 + 11) % 18) + 6;
-      data.activity[dateStr] = simulatedCount;
-    }
-  }
-}
-
-/**
  * Loads and validates progress data from localStorage, calculating streaks.
  */
 export function loadProgressData() {
@@ -81,7 +52,6 @@ export function loadProgressData() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       const freshState = createDefaultState();
-      seedBaselineActivityIfEmpty(freshState);
       saveProgressData(freshState);
       return freshState;
     }
@@ -97,7 +67,6 @@ export function loadProgressData() {
       if (!migratedState.activity) {
         migratedState.activity = {};
       }
-      seedBaselineActivityIfEmpty(migratedState);
       saveProgressData(migratedState);
       return migratedState;
     }
@@ -130,14 +99,10 @@ export function loadProgressData() {
       saveProgressData(data);
     }
 
-    seedBaselineActivityIfEmpty(data);
-    saveProgressData(data);
-
     return data;
   } catch (error) {
     console.error('Failed to parse progress data from storage:', error);
     const freshState = createDefaultState();
-    seedBaselineActivityIfEmpty(freshState);
     saveProgressData(freshState);
     return freshState;
   }
@@ -167,7 +132,7 @@ export function recordCompletedSession(storageData) {
   } else {
     storageData.progression.today_sessions_count = (storageData.progression.today_sessions_count || 0) + 1;
   }
-  recordDailyActivity(storageData, 10, today);
+  recordDailyActivity(storageData, 1, today);
   saveProgressData(storageData);
   return storageData.progression.today_sessions_count;
 }
