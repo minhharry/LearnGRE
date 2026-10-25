@@ -1528,3 +1528,730 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #f87171;
 }
+
+/* ==========================================================================
+   Overall Overview Dashboard & GitHub-like Activity Heatmap
+   ========================================================================== */
+
+.overview-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 28px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.overview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.overview-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.overview-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-color);
+}
+
+.overview-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-title);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.overview-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.overview-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Overview KPI Stat Cards Grid */
+.overview-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.kpi-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+}
+
+.kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kpi-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-title);
+  line-height: 1.1;
+}
+
+.kpi-subval {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.kpi-subtext {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kpi-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.kpi-badge-green {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid #a7f3d0;
+}
+
+.kpi-badge-blue {
+  background-color: var(--accent-light);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-border);
+}
+
+.kpi-badge-orange {
+  background-color: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+}
+
+.kpi-badge-red {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid #fecaca;
+}
+
+[data-theme="dark"] .kpi-badge-green {
+  background-color: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .kpi-badge-blue {
+  background-color: rgba(59, 130, 246, 0.16);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+[data-theme="dark"] .kpi-badge-orange {
+  background-color: rgba(249, 115, 22, 0.16);
+  color: #fb923c;
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+[data-theme="dark"] .kpi-badge-red {
+  background-color: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* GitHub Activity Heatmap Card */
+.github-heatmap-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-xs);
+}
+
+.heatmap-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.heatmap-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.heatmap-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-title);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heatmap-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.heatmap-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.heatmap-stat-item strong {
+  color: var(--text-title);
+  font-family: var(--font-mono);
+}
+
+/* Heatmap Grid & Scrolling Area */
+.heatmap-scroll-area {
+  overflow-x: auto;
+  padding: 10px 4px 6px;
+  scrollbar-width: thin;
+}
+
+.heatmap-scroll-area::-webkit-scrollbar {
+  height: 6px;
+}
+
+.heatmap-scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+.heatmap-board {
+  display: inline-flex;
+  gap: 8px;
+  user-select: none;
+}
+
+.heatmap-days-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 21px; /* Align with cells below months row */
+}
+
+.heatmap-day-label {
+  height: 11px;
+  font-size: 9px;
+  line-height: 11px;
+  color: var(--text-light);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-align: right;
+  padding-right: 4px;
+  width: 22px;
+}
+
+.heatmap-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.heatmap-months-row {
+  display: flex;
+  height: 17px;
+  position: relative;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+}
+
+.heatmap-month-label {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+.heatmap-grid-columns {
+  display: flex;
+  gap: 3px;
+}
+
+.heatmap-week-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 80ms ease-out, outline 80ms ease-out;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.35);
+  outline: 1.5px solid var(--text-title);
+  z-index: 10;
+  position: relative;
+}
+
+/* Light Theme Heatmap Colors (GitHub standard green levels) */
+.heatmap-cell.level-0 {
+  background-color: #ebedf0;
+  border: 1px solid rgba(27, 31, 35, 0.06);
+}
+
+.heatmap-cell.level-1 {
+  background-color: #9be9a8;
+  border: 1px solid rgba(27, 31, 35, 0.08);
+}
+
+.heatmap-cell.level-2 {
+  background-color: #40c463;
+  border: 1px solid rgba(27, 31, 35, 0.08);
+}
+
+.heatmap-cell.level-3 {
+  background-color: #30a14e;
+  border: 1px solid rgba(27, 31, 35, 0.08);
+}
+
+.heatmap-cell.level-4 {
+  background-color: #216e39;
+  border: 1px solid rgba(27, 31, 35, 0.08);
+}
+
+.heatmap-cell.is-future {
+  opacity: 0.15;
+  cursor: default;
+}
+
+.heatmap-cell.is-future:hover {
+  transform: none;
+  outline: none;
+}
+
+/* Dark Theme Heatmap Colors (GitHub Dark Theme levels) */
+[data-theme="dark"] .heatmap-cell.level-0 {
+  background-color: #161b22;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .heatmap-cell.level-1 {
+  background-color: #0e4429;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .heatmap-cell.level-2 {
+  background-color: #006d32;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .heatmap-cell.level-3 {
+  background-color: #26a641;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .heatmap-cell.level-4 {
+  background-color: #39d353;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Heatmap Footer & Legend */
+.heatmap-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.heatmap-legend-cells {
+  display: flex;
+  gap: 3px;
+}
+
+/* Floating Custom Heatmap Tooltip */
+.heatmap-floating-tooltip {
+  position: fixed;
+  background-color: #0f172a;
+  color: #ffffff;
+  border: 1px solid #334155;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 10000;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translate(-50%, -100%) translateY(-8px);
+  transition: opacity 100ms ease-out;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .heatmap-floating-tooltip {
+  background-color: #1e293b;
+  border-color: #475569;
+}
+
+.heatmap-floating-tooltip.visible {
+  opacity: 1;
+}
+
+.heatmap-floating-tooltip strong {
+  color: #38bdf8;
+  font-family: var(--font-mono);
+}
+
+/* Selected Heatmap Cell on Touch / Click */
+.heatmap-cell.is-selected {
+  outline: 2px solid var(--accent-color) !important;
+  transform: scale(1.3) !important;
+  z-index: 12 !important;
+}
+
+/* Mobile Touch Info Bar under Heatmap */
+.heatmap-selected-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-secondary);
+  border: 1px dashed var(--border-color);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.heatmap-selected-info.has-data {
+  background-color: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  color: var(--text-body);
+}
+
+.heatmap-selected-info strong {
+  color: var(--accent-color);
+  font-family: var(--font-mono);
+}
+
+.heatmap-mobile-swipe-hint {
+  display: none;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: -6px;
+  margin-bottom: 2px;
+}
+
+.topbar-btn-text {
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+/* Leitner SRS Level Breakdown Card */
+.leitner-distribution-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+.leitner-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.leitner-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-title);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Stacked Multi-Segment Mastery Bar */
+.mastery-stacked-bar {
+  display: flex;
+  height: 12px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.mastery-segment {
+  height: 100%;
+  transition: width 300ms ease;
+}
+
+.mastery-segment.seg-l0 { background-color: var(--level-0); }
+.mastery-segment.seg-l1 { background-color: var(--level-1); }
+.mastery-segment.seg-l2 { background-color: var(--level-2); }
+.mastery-segment.seg-l3 { background-color: var(--level-3); }
+.mastery-segment.seg-l4 { background-color: var(--level-4); }
+
+.leitner-levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.leitner-level-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.leitner-level-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.leitner-level-card.card-l0::before { background-color: var(--level-0); }
+.leitner-level-card.card-l1::before { background-color: var(--level-1); }
+.leitner-level-card.card-l2::before { background-color: var(--level-2); }
+.leitner-level-card.card-l3::before { background-color: var(--level-3); }
+.leitner-level-card.card-l4::before { background-color: var(--level-4); }
+
+.leitner-level-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-title);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leitner-level-interval {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.leitner-level-count {
+  font-size: 18px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-title);
+  margin-top: 4px;
+}
+
+.leitner-level-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 32 Groups Overview Matrix */
+.groups-matrix-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+.groups-matrix-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.groups-matrix-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-title);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.groups-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.matrix-group-btn {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.matrix-group-btn:hover {
+  background-color: var(--bg-primary);
+  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.matrix-group-btn.is-current {
+  border-color: var(--accent-color);
+  background-color: var(--accent-light);
+}
+
+.matrix-group-btn.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.matrix-group-btn.is-locked:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-color);
+}
+
+.matrix-group-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-title);
+}
+
+.matrix-group-pct {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.matrix-group-btn.is-mastered .matrix-group-pct {
+  color: var(--success-border);
+}
+
+.matrix-group-bar {
+  height: 4px;
+  background-color: var(--border-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.matrix-group-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background-color: var(--accent-color);
+  transition: width 200ms ease;
+}
+
+.matrix-group-btn.is-mastered .matrix-group-bar-fill {
+  background-color: var(--success-border);
+}
+
+.matrix-group-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+

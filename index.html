@@ -41,6 +41,17 @@
       </div>
 
       <div class="top-bar-right">
+        <!-- Quick Dashboard Button for Mobile & Desktop -->
+        <button id="topbar-dashboard-btn" class="icon-btn" title="Dashboard Thống kê & Biểu đồ Heatmap"
+          aria-label="Dashboard Thống kê">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          <span class="topbar-btn-text">Thống kê</span>
+        </button>
+
         <!-- Daily Streak Chip -->
         <div class="streak-chip" id="topbar-streak" title="Chuỗi ngày học liên tục">
           <svg class="svg-icon streak-icon" viewBox="0 0 24 24">
@@ -83,6 +94,16 @@
         </div>
 
         <nav class="sidebar-nav-list">
+          <div id="nav-overview-dashboard" class="sidebar-nav-item" title="Dashboard thống kê tổng hợp & Biểu đồ đóng góp Heatmap">
+            <div class="sidebar-nav-left">
+              <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+              <span>Dashboard Thống kê</span>
+            </div>
+          </div>
           <div id="nav-all-groups" class="sidebar-nav-item active">
             <div class="sidebar-nav-left">
               <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
@@ -91,7 +112,7 @@
                 <rect x="14" y="14" width="7" height="7" />
                 <rect x="3" y="14" width="7" height="7" />
               </svg>
-              <span>Tất cả Groups</span>
+              <span>Danh sách Groups</span>
             </div>
           </div>
           <div id="nav-all-due" class="sidebar-nav-item" title="Tổng ôn tập tất cả các từ đã tới hạn">
@@ -241,6 +262,10 @@
             <tr>
               <td><span class="keycap">R</span></td>
               <td>Khởi chạy ngay phiên <strong>Tổng ôn tới hạn</strong> trên toàn bộ các Group (khi ở màn hình chính).</td>
+            </tr>
+            <tr>
+              <td><span class="keycap">D</span></td>
+              <td>Mở <strong>Dashboard Thống kê & Biểu đồ Heatmap</strong> tổng hợp toàn bộ hệ thống.</td>
             </tr>
             <tr>
               <td><span class="keycap">Esc</span></td>

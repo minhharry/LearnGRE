@@ -13,6 +13,7 @@ import {
   encodeProgressCode,
   decodeProgressCode,
   recordCompletedSession,
+  recordDailyActivity,
   countDueWords,
 } from './storage.js';
 import { evaluateWordAnswer } from './srs.js';
@@ -22,6 +23,7 @@ import {
   renderTopBar,
   renderSidebarGroups,
   renderGroupDashboard,
+  renderOverviewDashboard,
   renderErrorNotebook,
   renderSessionProgressHeader,
   updateProgressSegment,
@@ -47,7 +49,7 @@ class AppController {
     this.currentGroup = this.storageData.progression.current_group || 1;
     this.activeSession = null;
     this.currentQuestionState = null;
-    this.currentView = 'dashboard'; // 'dashboard' | 'session' | 'errors'
+    this.currentView = 'dashboard'; // 'dashboard' (default) | 'overview' | 'session' | 'errors'
     this.questionStartTime = 0;
     this.isWaitingForContinue = false;
   }
@@ -126,6 +128,7 @@ class AppController {
       vocabList: this.vocabList,
       storageData: this.storageData,
       currentGroup: this.currentGroup,
+      currentView: this.currentView,
       searchQuery,
       onSelectGroup: (g) => {
         this.currentGroup = g;
@@ -151,19 +154,55 @@ class AppController {
     }
     document.body.classList.toggle('in-session', this.currentView === 'session');
 
+    const navOverview = document.getElementById('nav-overview-dashboard');
     const navAll = document.getElementById('nav-all-groups');
     const navErr = document.getElementById('nav-error-notebook');
-    if (navAll && navErr) {
-      if (this.currentView === 'errors') {
-        navErr.classList.add('active');
-        navAll.classList.remove('active');
-      } else {
-        navAll.classList.add('active');
-        navErr.classList.remove('active');
-      }
+    const topbarDashBtn = document.getElementById('topbar-dashboard-btn');
+    if (navOverview) {
+      navOverview.classList.toggle('active', this.currentView === 'overview');
+    }
+    if (navAll) {
+      navAll.classList.toggle('active', this.currentView === 'dashboard');
+    }
+    if (navErr) {
+      navErr.classList.toggle('active', this.currentView === 'errors');
+    }
+    if (topbarDashBtn) {
+      topbarDashBtn.classList.toggle('active', this.currentView === 'overview');
     }
 
-    if (this.currentView === 'dashboard') {
+    if (this.currentView === 'overview') {
+      renderOverviewDashboard({
+        vocabList: this.vocabList,
+        storageData: this.storageData,
+        onSelectGroup: (g) => {
+          this.currentGroup = g;
+          this.storageData.progression.current_group = g;
+          saveProgressData(this.storageData);
+          this.currentView = 'dashboard';
+          this.renderSidebar();
+          this.renderCurrentView();
+        },
+        onStartGroupSession: (g) => {
+          this.currentGroup = g;
+          this.storageData.progression.current_group = g;
+          saveProgressData(this.storageData);
+          this.startSession('standard');
+        },
+        onStartSpeedMatch: (g) => {
+          this.currentGroup = g;
+          this.storageData.progression.current_group = g;
+          saveProgressData(this.storageData);
+          this.startSession('speed_match_only');
+        },
+        onStartAllDueSession: () => this.handleStartAllDueSession(),
+        onViewErrorNotebook: () => {
+          this.currentView = 'errors';
+          this.renderSidebar();
+          this.renderCurrentView();
+        },
+      });
+    } else if (this.currentView === 'dashboard') {
       renderGroupDashboard({
         group: this.currentGroup,
         vocabList: this.vocabList,
@@ -172,6 +211,11 @@ class AppController {
         onStartSpeedMatch: () => this.startSession('speed_match_only'),
         onToggleFlag: (wordId) => this.toggleWordFlag(wordId),
         onStartAllDueSession: () => this.handleStartAllDueSession(),
+        onViewOverview: () => {
+          this.currentView = 'overview';
+          this.renderSidebar();
+          this.renderCurrentView();
+        },
       });
     } else if (this.currentView === 'errors') {
       renderErrorNotebook({
@@ -256,7 +300,7 @@ class AppController {
           }
         },
         onReturnHome: () => {
-          this.currentView = 'dashboard';
+          this.currentView = 'overview';
           this.renderSidebar();
           this.renderCurrentView();
         },
@@ -417,6 +461,7 @@ class AppController {
     );
 
     this.storageData.words[word.id] = updatedRecord;
+    recordDailyActivity(this.storageData, 1);
 
     if (levelPromoted) {
       this.activeSession.promotedWordIds.add(word.id);
@@ -461,7 +506,24 @@ class AppController {
 
     // Brand Logo Button
     document.getElementById('brand-home-btn')?.addEventListener('click', () => {
-      this.currentView = 'dashboard';
+      this.currentView = 'overview';
+      this.renderSidebar();
+      this.renderCurrentView();
+      this.closeDrawer();
+    });
+
+    // Nav Item: Overview Dashboard
+    document.getElementById('nav-overview-dashboard')?.addEventListener('click', () => {
+      this.currentView = 'overview';
+      this.renderSidebar();
+      this.renderCurrentView();
+      this.closeDrawer();
+    });
+
+    // Topbar Dashboard Quick Button (Mobile & Desktop)
+    document.getElementById('topbar-dashboard-btn')?.addEventListener('click', () => {
+      this.currentView = this.currentView === 'overview' ? 'dashboard' : 'overview';
+      this.renderSidebar();
       this.renderCurrentView();
       this.closeDrawer();
     });
@@ -469,6 +531,7 @@ class AppController {
     // Nav Item: All Groups
     document.getElementById('nav-all-groups')?.addEventListener('click', () => {
       this.currentView = 'dashboard';
+      this.renderSidebar();
       this.renderCurrentView();
       this.closeDrawer();
     });
@@ -644,12 +707,25 @@ class AppController {
         return;
       }
 
-      // Key R: Review all due words when in dashboard
-      if (this.currentView === 'dashboard') {
+      // Key R: Review all due words when in dashboard or overview
+      if (this.currentView === 'dashboard' || this.currentView === 'overview') {
         if (e.key === 'r' || e.key === 'R') {
           if (!shortcutsModal.classList.contains('active') && !backupModal.classList.contains('active')) {
             e.preventDefault();
             this.handleStartAllDueSession();
+            return;
+          }
+        }
+      }
+
+      // Key D: Open Overview Dashboard
+      if (this.currentView !== 'session') {
+        if (e.key === 'd' || e.key === 'D') {
+          if (!shortcutsModal.classList.contains('active') && !backupModal.classList.contains('active')) {
+            e.preventDefault();
+            this.currentView = 'overview';
+            this.renderSidebar();
+            this.renderCurrentView();
             return;
           }
         }

@@ -49,11 +49,13 @@
     grid-template-columns: 1fr;
   }
 
-  .dashboard-container {
+  .dashboard-container,
+  .overview-container {
     padding: 20px;
   }
 
-  .dashboard-header {
+  .dashboard-header,
+  .overview-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
@@ -603,5 +605,168 @@
     width: 24px;
     height: 24px;
     padding: 2px;
+  }
+
+  .topbar-btn-text {
+    display: none;
+  }
+
+  .overview-container {
+    padding: 12px 10px 48px;
+    gap: 16px;
+  }
+
+  .overview-header {
+    gap: 12px;
+    padding-bottom: 14px;
+  }
+
+  .overview-title {
+    font-size: 20px;
+  }
+
+  .overview-subtitle {
+    font-size: 13px;
+  }
+
+  .overview-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .overview-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* 2-column KPI grid on mobile */
+  .overview-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .kpi-card {
+    padding: 12px 10px;
+    gap: 4px;
+  }
+
+  .kpi-label {
+    font-size: 10px;
+  }
+
+  .kpi-value {
+    font-size: 20px;
+  }
+
+  .kpi-subval {
+    font-size: 11px;
+  }
+
+  .kpi-subtext {
+    font-size: 10px;
+  }
+
+  /* Heatmap mobile presentation */
+  .github-heatmap-card {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+
+  .heatmap-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .heatmap-card-title {
+    font-size: 14px;
+  }
+
+  .heatmap-card-stats {
+    width: 100%;
+    justify-content: space-between;
+    font-size: 11px;
+    gap: 8px;
+  }
+
+  .heatmap-mobile-swipe-hint {
+    display: block;
+  }
+
+  .heatmap-selected-info {
+    display: flex;
+  }
+
+  .heatmap-scroll-area {
+    -webkit-overflow-scrolling: touch;
+    padding: 6px 2px;
+  }
+
+  .heatmap-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* Leitner cards on mobile */
+  .leitner-distribution-card {
+    padding: 14px 12px;
+    gap: 12px;
+  }
+
+  .leitner-card-title {
+    font-size: 14px;
+  }
+
+  .leitner-levels-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .leitner-level-card {
+    padding: 10px 12px;
+  }
+
+  /* 32 Groups Matrix on mobile: 4 columns */
+  .groups-matrix-card {
+    padding: 14px 12px;
+    gap: 12px;
+  }
+
+  .groups-matrix-title {
+    font-size: 14px;
+  }
+
+  .groups-matrix-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .matrix-group-btn {
+    padding: 8px 6px;
+    gap: 3px;
+  }
+
+  .matrix-group-top {
+    font-size: 11px;
+  }
+
+  .matrix-group-pct {
+    font-size: 10px;
+  }
+
+  .matrix-group-meta {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 359px) {
+  .overview-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .groups-matrix-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }

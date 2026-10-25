@@ -25,6 +25,11 @@ export const ICONS = {
   clock: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
   checkCircle: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
   bolt: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+  chart: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+  activity: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+  layers: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
+  target: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="6" r="6"/><circle cx="12" cy="2" r="2"/></svg>`,
+  grid: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
 };
 
 /**
@@ -133,6 +138,7 @@ export function renderSidebarGroups({
   vocabList,
   storageData,
   currentGroup,
+  currentView = 'dashboard',
   onSelectGroup,
   searchQuery = '',
 }) {
@@ -159,7 +165,7 @@ export function renderSidebarGroups({
     }
 
     const isLocked = !isCramMode && !unlocked.has(g);
-    const isActive = g === currentGroup;
+    const isActive = currentView === 'dashboard' && g === currentGroup;
 
     // Calculate mastery % for group
     let masteredCount = 0;
@@ -356,6 +362,585 @@ function startCountdownTimer(targetTimestamp, onTick, onComplete) {
 }
 
 /**
+ * Renders the Comprehensive System Dashboard with Aggregated Metrics,
+ * Leitner SRS Distribution, 32 Groups Matrix, and GitHub-like Activity Heatmap.
+ */
+export function renderOverviewDashboard({
+  vocabList,
+  storageData,
+  onSelectGroup,
+  onStartGroupSession,
+  onStartSpeedMatch,
+  onStartAllDueSession,
+  onViewErrorNotebook,
+}) {
+  stopCountdownTimer();
+
+  const stage = document.getElementById('main-stage');
+  if (!stage) return;
+
+  const totalWords = vocabList.length || 960;
+  let level0Count = 0;
+  let level1Count = 0;
+  let level2Count = 0;
+  let level3Count = 0;
+  let level4Count = 0;
+  let flaggedCount = 0;
+
+  for (const w of vocabList) {
+    const rec = storageData.words[w.id];
+    const lvl = rec ? (rec.level || 0) : 0;
+    if (lvl === 4) level4Count++;
+    else if (lvl === 3) level3Count++;
+    else if (lvl === 2) level2Count++;
+    else if (lvl === 1) level1Count++;
+    else level0Count++;
+
+    if (rec && (rec.flagged_error || (rec.mistake_count && rec.mistake_count > 0))) {
+      flaggedCount++;
+    }
+  }
+
+  const masteredCount = level3Count + level4Count;
+  const learningCount = level1Count + level2Count;
+  const masteredPercent = totalWords > 0 ? Math.round((masteredCount / totalWords) * 100) : 0;
+  const learningPercent = totalWords > 0 ? Math.round((learningCount / totalWords) * 100) : 0;
+  const unseenPercent = totalWords > 0 ? Math.round((level0Count / totalWords) * 100) : 0;
+  const dueCount = countDueWords(storageData);
+  const todaySessions = storageData.progression.today_sessions_count || 0;
+  const streak = storageData.progression.daily_streak || 1;
+  const currentGroup = storageData.progression.current_group || 1;
+  const unlockedGroups = new Set(storageData.progression.unlocked_groups || [1]);
+  const isCramMode = storageData.ui_prefs?.study_mode === 'cram';
+
+  // --------------------------------------------------------------------------
+  // GitHub-Style Activity Heatmap Calculations (Past 52 Weeks / 364 Days)
+  // --------------------------------------------------------------------------
+  const today = new Date();
+  const endDayOfWeek = today.getDay(); // 0 is Sunday, 6 is Saturday
+  const daysUntilSaturday = 6 - endDayOfWeek;
+  const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilSaturday);
+
+  const totalWeeks = 52;
+  const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() - (totalWeeks * 7 - 1));
+
+  const activityMap = storageData.activity || {};
+  let annualTotalActivity = 0;
+  let activeDaysCount = 0;
+  let maxDayActivity = 0;
+  let maxDayDateStr = '';
+  let longestStreak = streak;
+  let rollingStreak = 0;
+
+  const VI_MONTH_NAMES = [
+    'Thg 1', 'Thg 2', 'Thg 3', 'Thg 4', 'Thg 5', 'Thg 6',
+    'Thg 7', 'Thg 8', 'Thg 9', 'Thg 10', 'Thg 11', 'Thg 12'
+  ];
+
+  const VI_DAY_NAMES = [
+    'Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'
+  ];
+
+  const weeksData = [];
+  const monthLabels = [];
+  let lastMonth = -1;
+
+  for (let w = 0; w < totalWeeks; w++) {
+    const daysInWeek = [];
+    for (let d = 0; d < 7; d++) {
+      const cellDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + (w * 7 + d));
+      const cellTime = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate()).getTime();
+      const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+      const isFuture = cellTime > todayTime;
+
+      const year = cellDate.getFullYear();
+      const month = String(cellDate.getMonth() + 1).padStart(2, '0');
+      const day = String(cellDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      const count = isFuture ? 0 : (activityMap[dateStr] || 0);
+
+      if (!isFuture) {
+        annualTotalActivity += count;
+        if (count > 0) {
+          activeDaysCount++;
+          rollingStreak++;
+          if (rollingStreak > longestStreak) longestStreak = rollingStreak;
+          if (count > maxDayActivity) {
+            maxDayActivity = count;
+            maxDayDateStr = dateStr;
+          }
+        } else {
+          rollingStreak = 0;
+        }
+      }
+
+      // Record month label at start of each month or week 0
+      if (d === 0) {
+        const m = cellDate.getMonth();
+        if (m !== lastMonth) {
+          monthLabels.push({ weekIndex: w, label: VI_MONTH_NAMES[m] });
+          lastMonth = m;
+        }
+      }
+
+      let level = 0;
+      if (!isFuture) {
+        if (count >= 20) level = 4;
+        else if (count >= 10) level = 3;
+        else if (count >= 5) level = 2;
+        else if (count >= 1) level = 1;
+      }
+
+      daysInWeek.push({
+        date: cellDate,
+        dateStr,
+        count,
+        level,
+        isFuture,
+        dayOfWeek: d,
+      });
+    }
+    weeksData.push(daysInWeek);
+  }
+
+  // --------------------------------------------------------------------------
+  // Build Heatmap HTML
+  // --------------------------------------------------------------------------
+  let monthLabelsHtml = '';
+  monthLabels.forEach((m) => {
+    monthLabelsHtml += `<span class="heatmap-month-label" style="left: ${m.weekIndex * 14}px;">${m.label}</span>`;
+  });
+
+  let columnsHtml = '';
+  weeksData.forEach((week) => {
+    let weekCellsHtml = '';
+    week.forEach((day) => {
+      weekCellsHtml += `
+        <div class="heatmap-cell level-${day.level} ${day.isFuture ? 'is-future' : ''}"
+             data-date="${day.dateStr}"
+             data-count="${day.count}"
+             data-future="${day.isFuture}"></div>
+      `;
+    });
+    columnsHtml += `<div class="heatmap-week-column">${weekCellsHtml}</div>`;
+  });
+
+  // --------------------------------------------------------------------------
+  // Build 32 Groups Matrix HTML
+  // --------------------------------------------------------------------------
+  let groupsMatrixHtml = '';
+  for (let g = 1; g <= 32; g++) {
+    const groupWords = vocabList.filter((w) => w.group === g);
+    let gMastered = 0;
+    for (const w of groupWords) {
+      const rec = storageData.words[w.id];
+      if (rec && rec.level >= 3) gMastered++;
+    }
+    const gTotal = groupWords.length || 30;
+    const gPct = gTotal > 0 ? Math.round((gMastered / gTotal) * 100) : 0;
+    const isLocked = !isCramMode && !unlockedGroups.has(g);
+    const isCurrent = g === currentGroup;
+    const isMastered = gPct >= 85;
+
+    groupsMatrixHtml += `
+      <div class="matrix-group-btn ${isCurrent ? 'is-current' : ''} ${isLocked ? 'is-locked' : ''} ${isMastered ? 'is-mastered' : ''}" data-group="${g}" title="Group ${g}: ${gMastered}/${gTotal} từ thành thạo (${gPct}%)">
+        <div class="matrix-group-top">
+          <span>G${String(g).padStart(2, '0')}</span>
+          <span class="matrix-group-pct">${gPct}%</span>
+        </div>
+        <div class="matrix-group-bar">
+          <div class="matrix-group-bar-fill" style="width: ${gPct}%;"></div>
+        </div>
+        <div class="matrix-group-meta">
+          ${isLocked ? 'Đang khóa' : `${gMastered}/${gTotal} từ`}
+        </div>
+      </div>
+    `;
+  }
+
+  // --------------------------------------------------------------------------
+  // Full Dashboard Assembly
+  // --------------------------------------------------------------------------
+  stage.innerHTML = `
+    <div class="overview-container animate-fade-in">
+      <!-- Dashboard Header -->
+      <div class="overview-header">
+        <div class="overview-title-group">
+          <div class="overview-tag">
+            ${ICONS.chart}
+            <span>Hệ thống Báo cáo Tổng hợp &bull; LearnGRE</span>
+          </div>
+          <h1 class="overview-title">Dashboard Thống kê Học tập</h1>
+          <p class="overview-subtitle">
+            Tổng quan tiến độ 960 từ vựng GRE, chu kỳ Leitner SRS và lịch sử đóng góp hoạt động thời gian thực.
+          </p>
+        </div>
+
+        <div class="overview-actions">
+          <button id="btn-overview-continue-group" class="btn-primary" title="Vào học tiếp Group ${currentGroup}">
+            ${ICONS.arrowRight} <span>Tiếp tục Group ${currentGroup}</span>
+          </button>
+          <button id="btn-overview-all-due" class="btn-due-review ${dueCount > 0 ? 'has-due' : ''}" title="Tổng ôn toàn bộ các từ đã đến hạn (Phím tắt: R)">
+            ${ICONS.clock} <span>Tổng ôn tới hạn</span>
+            <span class="due-badge-pill">${dueCount}</span>
+          </button>
+          <button id="btn-overview-speed-match" class="btn-secondary" title="Luyện phản xạ nghĩa từ">
+            ${ICONS.bolt} <span>Speed Match</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards Grid -->
+      <div class="overview-kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Tổng từ đã học</span>
+            <span class="kpi-icon">${ICONS.book}</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">${totalWords - level0Count}</span>
+            <span class="kpi-subval">/ ${totalWords}</span>
+          </div>
+          <div class="kpi-subtext">Đã tiếp cận ${100 - unseenPercent}% kho từ vựng</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Thành thạo (L3 - L4)</span>
+            <span class="kpi-badge kpi-badge-green">${masteredPercent}%</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" style="color: var(--success-border);">${masteredCount}</span>
+            <span class="kpi-subval">từ vựng</span>
+          </div>
+          <div class="kpi-subtext">Chu kỳ nhớ dài hạn (3 - 7 ngày)</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Đang ghi nhớ (L1 - L2)</span>
+            <span class="kpi-badge kpi-badge-blue">${learningPercent}%</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" style="color: var(--accent-color);">${learningCount}</span>
+            <span class="kpi-subval">từ vựng</span>
+          </div>
+          <div class="kpi-subtext">Chu kỳ nhớ ngắn hạn (4 - 24 giờ)</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Chuỗi Streak</span>
+            <span class="kpi-badge kpi-badge-orange">${streak} ngày</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" style="color: var(--streak-color);">${streak}</span>
+            <span class="kpi-subval">ngày liên tục</span>
+          </div>
+          <div class="kpi-subtext">Chuỗi dài nhất: ${longestStreak} ngày</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-label">Phiên hôm nay</span>
+            <span class="kpi-icon">${ICONS.checkCircle}</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value">${todaySessions}</span>
+            <span class="kpi-subval">phiên</span>
+          </div>
+          <div class="kpi-subtext">${todaySessions > 0 ? 'Đã đạt chỉ tiêu học tập hôm nay' : 'Chưa hoàn thành phiên nào'}</div>
+        </div>
+
+        <div class="kpi-card" id="kpi-card-errors" style="cursor: pointer;" title="Bấm để xem Sổ tay câu sai">
+          <div class="kpi-header">
+            <span class="kpi-label">Sổ tay câu sai</span>
+            <span class="kpi-badge kpi-badge-red">${flaggedCount} từ</span>
+          </div>
+          <div class="kpi-value-row">
+            <span class="kpi-value" style="color: #f87171;">${flaggedCount}</span>
+            <span class="kpi-subval">cần củng cố</span>
+          </div>
+          <div class="kpi-subtext">Từ bị gắn cờ hoặc trả lời sai</div>
+        </div>
+      </div>
+
+      <!-- GitHub-like Activity Heatmap Card -->
+      <div class="github-heatmap-card">
+        <div class="heatmap-card-header">
+          <div class="heatmap-card-title-group">
+            <h2 class="heatmap-card-title">
+              ${ICONS.activity}
+              <span>Biểu đồ Hoạt động & Đóng góp (52 tuần gần nhất)</span>
+            </h2>
+          </div>
+          <div class="heatmap-card-stats">
+            <div class="heatmap-stat-item">
+              <span>Tổng hoạt động:</span>
+              <strong>${annualTotalActivity}</strong>
+            </div>
+            <div class="heatmap-stat-item">
+              <span>Ngày học tập:</span>
+              <strong>${activeDaysCount} ngày</strong>
+            </div>
+            <div class="heatmap-stat-item">
+              <span>Chuỗi hiện tại:</span>
+              <strong>${streak} ngày</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Horizontal Scroll Hint -->
+        <div class="heatmap-mobile-swipe-hint">
+          <span>Vuốt ngang để xem toàn bộ 52 tuần &bull; Chạm vào ô để xem chi tiết</span>
+        </div>
+
+        <!-- Heatmap Board Container -->
+        <div class="heatmap-scroll-area">
+          <div class="heatmap-board">
+            <!-- Day of Week Labels (T2, T4, T6) -->
+            <div class="heatmap-days-legend">
+              <span class="heatmap-day-label"></span>
+              <span class="heatmap-day-label">T2</span>
+              <span class="heatmap-day-label"></span>
+              <span class="heatmap-day-label">T4</span>
+              <span class="heatmap-day-label"></span>
+              <span class="heatmap-day-label">T6</span>
+              <span class="heatmap-day-label"></span>
+            </div>
+
+            <!-- Heatmap Columns Matrix -->
+            <div class="heatmap-matrix">
+              <!-- Month Labels Along the Top -->
+              <div class="heatmap-months-row">
+                ${monthLabelsHtml}
+              </div>
+
+              <!-- 52 Week Columns -->
+              <div class="heatmap-grid-columns" id="heatmap-cells-container">
+                ${columnsHtml}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Touch Info Bar -->
+        <div id="heatmap-selected-info" class="heatmap-selected-info">
+          <span>Chạm vào ô ngày bất kỳ để xem chi tiết hoạt động</span>
+        </div>
+
+        <!-- Heatmap Footer with Legend -->
+        <div class="heatmap-card-footer">
+          <div style="font-size: 12px; color: var(--text-muted);">
+            Mỗi ô đại diện cho 1 ngày; hoạt động tính theo số câu hỏi và phiên luyện tập SRS được ghi nhận.
+          </div>
+          <div class="heatmap-legend">
+            <span>Ít</span>
+            <div class="heatmap-legend-cells">
+              <div class="heatmap-cell level-0" title="0 hoạt động"></div>
+              <div class="heatmap-cell level-1" title="1 - 4 hoạt động"></div>
+              <div class="heatmap-cell level-2" title="5 - 9 hoạt động"></div>
+              <div class="heatmap-cell level-3" title="10 - 19 hoạt động"></div>
+              <div class="heatmap-cell level-4" title="20+ hoạt động"></div>
+            </div>
+            <span>Nhiều</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Tooltip Element for Heatmap -->
+      <div id="heatmap-floating-tooltip" class="heatmap-floating-tooltip"></div>
+
+      <!-- Leitner SRS Level Breakdown Card -->
+      <div class="leitner-distribution-card">
+        <div class="leitner-card-header">
+          <h2 class="leitner-card-title">
+            ${ICONS.layers}
+            <span>Phân bổ 5 Cấp độ Spaced Repetition (Leitner SRS)</span>
+          </h2>
+          <span style="font-size: 12px; color: var(--text-muted);">Tổng cộng: <strong>${totalWords} từ vựng GRE</strong></span>
+        </div>
+
+        <!-- Stacked Multi-Segment Progress Bar -->
+        <div class="mastery-stacked-bar" title="L0: ${level0Count} | L1: ${level1Count} | L2: ${level2Count} | L3: ${level3Count} | L4: ${level4Count}">
+          <div class="mastery-segment seg-l0" style="width: ${(level0Count / totalWords) * 100}%;"></div>
+          <div class="mastery-segment seg-l1" style="width: ${(level1Count / totalWords) * 100}%;"></div>
+          <div class="mastery-segment seg-l2" style="width: ${(level2Count / totalWords) * 100}%;"></div>
+          <div class="mastery-segment seg-l3" style="width: ${(level3Count / totalWords) * 100}%;"></div>
+          <div class="mastery-segment seg-l4" style="width: ${(level4Count / totalWords) * 100}%;"></div>
+        </div>
+
+        <!-- 5 Level Cards Grid -->
+        <div class="leitner-levels-grid">
+          <div class="leitner-level-card card-l0">
+            <div class="leitner-level-title">
+              <span>Level 0 &bull; Chưa học</span>
+              <span class="leitner-level-interval">Kho dự trữ</span>
+            </div>
+            <div class="leitner-level-count">${level0Count} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">(${unseenPercent}%)</span></div>
+            <div class="leitner-level-desc">Từ vựng chưa từng xuất hiện trong phiên làm bài.</div>
+          </div>
+
+          <div class="leitner-level-card card-l1">
+            <div class="leitner-level-title">
+              <span>Level 1 &bull; Khởi động</span>
+              <span class="leitner-level-interval">SRS: 4 giờ</span>
+            </div>
+            <div class="leitner-level-count">${level1Count} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">(${Math.round((level1Count / totalWords) * 100)}%)</span></div>
+            <div class="leitner-level-desc">Vừa tiếp cận hoặc vừa làm sai, cần ôn lại ngay sau 4h.</div>
+          </div>
+
+          <div class="leitner-level-card card-l2">
+            <div class="leitner-level-title">
+              <span>Level 2 &bull; Đang nhớ</span>
+              <span class="leitner-level-interval">SRS: 24 giờ</span>
+            </div>
+            <div class="leitner-level-count">${level2Count} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">(${Math.round((level2Count / totalWords) * 100)}%)</span></div>
+            <div class="leitner-level-desc">Đã trả lời đúng 1 lần liên tiếp, chu kỳ ôn 1 ngày.</div>
+          </div>
+
+          <div class="leitner-level-card card-l3">
+            <div class="leitner-level-title">
+              <span>Level 3 &bull; Củng cố sâu</span>
+              <span class="leitner-level-interval">SRS: 3 ngày</span>
+            </div>
+            <div class="leitner-level-count">${level3Count} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">(${Math.round((level3Count / totalWords) * 100)}%)</span></div>
+            <div class="leitner-level-desc">Nhớ ổn định (2 lần đúng liên tiếp), chu kỳ ôn 3 ngày.</div>
+          </div>
+
+          <div class="leitner-level-card card-l4">
+            <div class="leitner-level-title">
+              <span>Level 4 &bull; Thành thạo</span>
+              <span class="leitner-level-interval">SRS: 7 ngày</span>
+            </div>
+            <div class="leitner-level-count">${level4Count} <span style="font-size: 12px; font-weight: 500; color: var(--text-muted);">(${Math.round((level4Count / totalWords) * 100)}%)</span></div>
+            <div class="leitner-level-desc">Trí nhớ dài hạn vững chắc (3 lần đúng liên tiếp).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 32 Groups Overview Matrix -->
+      <div class="groups-matrix-card">
+        <div class="groups-matrix-header">
+          <h2 class="groups-matrix-title">
+            ${ICONS.grid}
+            <span>Ma trận Tiến độ 32 Groups Từ vựng</span>
+          </h2>
+          <span style="font-size: 12px; color: var(--text-muted);">Bấm vào bất kỳ Group nào để chuyển đến chi tiết học tập</span>
+        </div>
+
+        <div class="groups-matrix-grid">
+          ${groupsMatrixHtml}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // --------------------------------------------------------------------------
+  // Attach Event Handlers
+  // --------------------------------------------------------------------------
+  document.getElementById('btn-overview-continue-group')?.addEventListener('click', () => {
+    onStartGroupSession(currentGroup);
+  });
+
+  document.getElementById('btn-overview-all-due')?.addEventListener('click', () => {
+    onStartAllDueSession();
+  });
+
+  document.getElementById('btn-overview-speed-match')?.addEventListener('click', () => {
+    onStartSpeedMatch(currentGroup);
+  });
+
+  document.getElementById('kpi-card-errors')?.addEventListener('click', () => {
+    onViewErrorNotebook();
+  });
+
+  // Group matrix click handlers
+  stage.querySelectorAll('.matrix-group-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const g = parseInt(btn.dataset.group, 10);
+      const isLocked = btn.classList.contains('is-locked');
+      if (!isLocked) {
+        onSelectGroup(g);
+      }
+    });
+  });
+
+  // Auto-scroll heatmap to the right so latest activity (today) is immediately visible on mobile
+  const scrollArea = stage.querySelector('.heatmap-scroll-area');
+  if (scrollArea) {
+    requestAnimationFrame(() => {
+      scrollArea.scrollLeft = scrollArea.scrollWidth;
+    });
+  }
+
+  // Heatmap Tooltip & Touch Event Listeners
+  const tooltip = document.getElementById('heatmap-floating-tooltip');
+  const infoEl = document.getElementById('heatmap-selected-info');
+  const cells = stage.querySelectorAll('.heatmap-cell');
+
+  cells.forEach((cell) => {
+    // Touch / Click selection (works seamlessly on mobile and desktop)
+    cell.addEventListener('click', () => {
+      const isFuture = cell.dataset.future === 'true';
+      if (isFuture) return;
+      const dateStr = cell.dataset.date;
+      const count = parseInt(cell.dataset.count, 10) || 0;
+
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const cellDate = new Date(y, m - 1, d);
+      const dayName = VI_DAY_NAMES[cellDate.getDay()];
+      const formattedDate = `${dayName}, ${d}/${m}/${y}`;
+
+      const countText = count === 0
+        ? 'Chưa có hoạt động học tập'
+        : `<strong>${count}</strong> hoạt động học tập SRS`;
+
+      cells.forEach((c) => c.classList.remove('is-selected'));
+      cell.classList.add('is-selected');
+
+      if (infoEl) {
+        infoEl.innerHTML = `<span class="heatmap-info-date">${formattedDate}:</span> <span class="heatmap-info-count">${countText}</span>`;
+        infoEl.classList.add('has-data');
+      }
+    });
+
+    if (tooltip) {
+      cell.addEventListener('mouseenter', () => {
+        const isFuture = cell.dataset.future === 'true';
+        const dateStr = cell.dataset.date;
+        const count = parseInt(cell.dataset.count, 10) || 0;
+
+        if (isFuture) {
+          tooltip.classList.remove('visible');
+          return;
+        }
+
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const cellDate = new Date(y, m - 1, d);
+        const dayName = VI_DAY_NAMES[cellDate.getDay()];
+        const formattedDate = `${dayName}, ngày ${d}/${m}/${y}`;
+
+        const countText = count === 0
+          ? 'Chưa có hoạt động học tập'
+          : `<strong>${count}</strong> hoạt động học tập SRS`;
+
+        tooltip.innerHTML = `<div>${countText}</div><div style="font-size: 11px; opacity: 0.8; margin-top: 2px;">${formattedDate}</div>`;
+
+        const rect = cell.getBoundingClientRect();
+        tooltip.style.left = `${rect.left + rect.width / 2}px`;
+        tooltip.style.top = `${rect.top}px`;
+        tooltip.classList.add('visible');
+      });
+
+      cell.addEventListener('mouseleave', () => {
+        tooltip.classList.remove('visible');
+      });
+    }
+  });
+}
+
+/**
  * Renders the Group Overview / Dashboard screen.
  */
 export function renderGroupDashboard({
@@ -366,6 +951,7 @@ export function renderGroupDashboard({
   onStartSpeedMatch,
   onToggleFlag,
   onStartAllDueSession,
+  onViewOverview,
 }) {
   stopCountdownTimer();
 
@@ -437,6 +1023,9 @@ export function renderGroupDashboard({
           </div>
         </div>
         <div class="dashboard-actions">
+          <button id="btn-goto-overview" class="btn-secondary" title="Xem Dashboard Thống kê & Biểu đồ Heatmap (Phím tắt: D)">
+            ${ICONS.chart} <span>Thống kê</span>
+          </button>
           <button id="btn-start-all-due" class="btn-due-review ${totalDueCount > 0 ? 'has-due' : ''}" title="Tổng ôn tập toàn bộ từ đã đến hạn ôn của tất cả các group (Phím tắt: R)">
             ${ICONS.clock} <span>Tổng ôn tới hạn</span>
             <span class="due-badge-pill">${totalDueCount}</span>
@@ -607,6 +1196,7 @@ export function renderGroupDashboard({
   }
 
   // Bind Buttons
+  document.getElementById('btn-goto-overview')?.addEventListener('click', onViewOverview);
   document.getElementById('btn-start-adaptive')?.addEventListener('click', onStartSession);
   document.getElementById('btn-start-speed-drill')?.addEventListener('click', onStartSpeedMatch);
   document.getElementById('btn-start-all-due')?.addEventListener('click', onStartAllDueSession);
