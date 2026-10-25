@@ -1,4 +1,4 @@
-const CACHE_NAME = 'learngre-v0';
+const CACHE_NAME = 'learngre-v2';
 const FONT_CACHE_NAME = 'learngre-fonts';
 
 // Static application assets to pre-cache on install
@@ -22,8 +22,7 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Use cache: 'reload' to bypass the browser HTTP disk cache
-      // and guarantee that the latest files are fetched from the server.
+      // Use cache: 'reload' to bypass HTTP disk cache and guarantee fresh fetch from server
       const requests = PRECACHE_ASSETS.map((url) => new Request(url, { cache: 'reload' }));
       return cache.addAll(requests);
     }).then(() => self.skipWaiting())
@@ -37,6 +36,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (!allowedCaches.includes(name)) {
+            console.log('Clearing outdated Service Worker cache:', name);
             return caches.delete(name);
           }
         })
@@ -75,8 +75,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy for HTML / Navigation requests: Network-First (fallback to Cache when offline)
-  // Ensures user always gets the latest HTML when online, preventing stale asset references
+  // Strategy 1: HTML Navigation requests -> Network-First (fallback to Cache when offline)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -90,16 +89,41 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(async () => {
-          const cachedResponse = await caches.match(event.request);
+          const cachedResponse = await caches.match(event.request, { ignoreSearch: true });
           return cachedResponse || caches.match('./index.html') || caches.match('./');
         })
     );
     return;
   }
 
-  // Strategy for static assets: Cache-First, fallback to Network with automatic cache update
+  // Strategy 2: Application Scripts, Styles, and JSONL data -> Network-First (fallback to Cache when offline)
+  // Ensures newest code and UI updates deployed to GitHub Pages apply immediately without getting trapped in stale cache!
+  if (
+    event.request.destination === 'script' ||
+    event.request.destination === 'style' ||
+    requestUrl.pathname.endsWith('.js') ||
+    requestUrl.pathname.endsWith('.css') ||
+    requestUrl.pathname.endsWith('.jsonl')
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request, { ignoreSearch: true }))
+    );
+    return;
+  }
+
+  // Strategy 3: Other static assets (images, icons) -> Cache-First, fallback to Network
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }

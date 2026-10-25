@@ -16,10 +16,10 @@
     rel="stylesheet">
 
   <!-- Application Stylesheets -->
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/layout.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/base.css?v=4.2">
+  <link rel="stylesheet" href="css/layout.css?v=4.2">
+  <link rel="stylesheet" href="css/components.css?v=4.2">
+  <link rel="stylesheet" href="css/responsive.css?v=4.2">
 </head>
 
 <body>
@@ -359,7 +359,7 @@
   </div>
 
   <!-- Main JavaScript Module Entry Point -->
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=4.2"></script>
 
   <!-- Service Worker Registration for Offline Caching -->
   <script>
@@ -378,7 +378,10 @@
           window.location.reload();
         });
 
-        navigator.serviceWorker.register('./sw.js').catch((err) => {
+        navigator.serviceWorker.register('./sw.js').then((registration) => {
+          // Force update check on every load so GitHub Pages always gets fresh code
+          registration.update();
+        }).catch((err) => {
           console.warn('Service Worker registration skipped or failed:', err);
         });
       });
