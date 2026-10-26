@@ -36,6 +36,7 @@ import {
   renderFlashMistakeFeedback,
   renderSessionSummary,
   renderThemeButton,
+  renderAudioButton,
   stopCountdownTimer,
   showToast,
   renderNewWordPreviewScreen,
@@ -309,6 +310,7 @@ class AppController {
       group: this.currentGroup,
       isFlagged,
       theme: this.storageData.ui_prefs.theme || 'dark',
+      autoAudio: this.storageData.ui_prefs.auto_audio !== false,
       onPrev: () => this.handlePrevPreviewWord(),
       onNext: () => this.handleNextPreviewWord(),
       onSkip: () => this.handleFinishPreview(),
@@ -316,6 +318,10 @@ class AppController {
       onExit: () => this.handleExitSession(),
       onThemeToggle: () => {
         this.toggleTheme();
+        this.renderCurrentPreviewCard();
+      },
+      onAudioToggle: () => {
+        this.toggleAudioPreference();
         this.renderCurrentPreviewCard();
       },
     });
@@ -421,10 +427,14 @@ class AppController {
       results: this.activeSession.results,
       theme: this.storageData.ui_prefs.theme || 'dark',
       isAllDue: this.activeSession?.mode === 'all_due',
+      autoAudio: this.storageData.ui_prefs.auto_audio !== false,
     });
 
     document.getElementById('session-theme-btn')?.addEventListener('click', () => {
       this.toggleTheme();
+    });
+    document.getElementById('session-audio-btn')?.addEventListener('click', () => {
+      this.toggleAudioPreference();
     });
 
     const handleExitSession = () => {
@@ -467,6 +477,7 @@ class AppController {
       renderFlashRecallQuestion({
         question,
         isFlagged,
+        autoAudio: this.storageData.ui_prefs.auto_audio !== false,
         onToggleFlag: () => this.toggleCurrentQuestionWordFlag(),
         onSelectOption: ({ isCorrect }) => {
           const elapsed = Date.now() - this.questionStartTime;
@@ -505,6 +516,7 @@ class AppController {
             question,
             isCorrect,
             chosenWord,
+            autoAudio: this.storageData.ui_prefs.auto_audio !== false,
             onContinue: () => this.advanceToNextQuestion(),
           });
         },
@@ -651,6 +663,11 @@ class AppController {
     const searchInput = document.getElementById('sidebar-search-input');
     searchInput?.addEventListener('input', (e) => {
       this.renderSidebar(e.target.value);
+    });
+
+    // Auto Pronounce Audio Toggle Button
+    document.getElementById('topbar-audio-btn')?.addEventListener('click', () => {
+      this.toggleAudioPreference();
     });
 
     // Theme Toggle Button (VS Code Dark / Light)
@@ -986,6 +1003,17 @@ class AppController {
     this.storageData.ui_prefs.theme = theme;
     saveProgressData(this.storageData);
     renderThemeButton(theme);
+  }
+
+  toggleAudioPreference() {
+    const current = this.storageData.ui_prefs.auto_audio !== false;
+    this.storageData.ui_prefs.auto_audio = !current;
+    saveProgressData(this.storageData);
+    renderAudioButton(!current);
+    showToast(
+      !current ? 'Đã bật tự động phát âm từ vựng' : 'Đã tắt tự động phát âm từ vựng',
+      'info'
+    );
   }
 }
 

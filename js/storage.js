@@ -38,6 +38,7 @@ export function createDefaultState() {
       sidebar_width: 320,
       study_mode: 'guided', // 'guided' | 'cram'
       theme: 'dark', // 'dark' | 'light' (VS Code palette)
+      auto_audio: true, // Auto pronounce vocabulary on card/question transitions
     },
     words: {},
     activity: {},
@@ -69,6 +70,17 @@ export function loadProgressData() {
       }
       saveProgressData(migratedState);
       return migratedState;
+    }
+
+    if (!data.ui_prefs || typeof data.ui_prefs !== 'object') {
+      data.ui_prefs = {
+        sidebar_width: 320,
+        study_mode: 'guided',
+        theme: 'dark',
+        auto_audio: true,
+      };
+    } else if (data.ui_prefs.auto_audio === undefined) {
+      data.ui_prefs.auto_audio = true;
     }
 
     if (!data.activity || typeof data.activity !== 'object') {

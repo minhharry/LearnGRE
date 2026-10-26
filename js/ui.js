@@ -10,6 +10,7 @@ import { countDueWords } from './storage.js';
 export const ICONS = {
   streak: `<svg class="svg-icon streak-icon" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`,
   audio: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`,
+  audioMuted: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`,
   flag: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`,
   lock: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
   check: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -33,15 +34,120 @@ export const ICONS = {
 };
 
 /**
- * Text-To-Speech Pronunciation using native Web Speech API.
+ * Cached SpeechSynthesis voices and active utterance to prevent Chromium V8 Garbage Collection bug.
+ */
+let cachedSpeechVoices = [];
+let preferredSpeechVoice = null;
+let activeSpeechUtterance = null;
+let speechQueueTimeoutId = null;
+
+/**
+ * Selects optimal English voice prioritizing native offline/local voices (zero network latency).
+ */
+export function getOrSelectPreferredVoice() {
+  if (!('speechSynthesis' in window)) return null;
+
+  if (!cachedSpeechVoices || cachedSpeechVoices.length === 0) {
+    cachedSpeechVoices = window.speechSynthesis.getVoices() || [];
+  }
+
+  if (cachedSpeechVoices.length === 0) return null;
+
+  // 1. Prefer English voices that are local service (completely offline, zero network latency)
+  const localEnglishVoice = cachedSpeechVoices.find(
+    (voice) => voice.localService && voice.lang && voice.lang.toLowerCase().startsWith('en')
+  );
+  if (localEnglishVoice) return localEnglishVoice;
+
+  // 2. Prefer standard OS English voices (Microsoft OneCore / SAPI / Apple / Android)
+  const osEnglishVoice = cachedSpeechVoices.find(
+    (voice) =>
+      voice.lang &&
+      voice.lang.toLowerCase().startsWith('en') &&
+      (voice.name.includes('Microsoft') || voice.name.includes('David') || voice.name.includes('Zira') || voice.name.includes('Samantha') || voice.name.includes('Alex'))
+  );
+  if (osEnglishVoice) return osEnglishVoice;
+
+  // 3. Any standard US English voice
+  const usEnglishVoice = cachedSpeechVoices.find(
+    (voice) => voice.lang && voice.lang.toLowerCase().replace('_', '-') === 'en-us'
+  );
+  if (usEnglishVoice) return usEnglishVoice;
+
+  // 4. Any English voice
+  const anyEnglishVoice = cachedSpeechVoices.find(
+    (voice) => voice.lang && voice.lang.toLowerCase().startsWith('en')
+  );
+  if (anyEnglishVoice) return anyEnglishVoice;
+
+  return cachedSpeechVoices[0] || null;
+}
+
+// Pre-warm and listen to voice availability changes in Chromium / WebKit
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  cachedSpeechVoices = window.speechSynthesis.getVoices() || [];
+  preferredSpeechVoice = getOrSelectPreferredVoice();
+
+  window.speechSynthesis.onvoiceschanged = () => {
+    cachedSpeechVoices = window.speechSynthesis.getVoices() || [];
+    preferredSpeechVoice = getOrSelectPreferredVoice();
+  };
+}
+
+/**
+ * Text-To-Speech Pronunciation using native Web Speech API with resilient queue & GC protection.
  */
 export function playPronunciation(word) {
   if (!('speechSynthesis' in window) || !word) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(word);
-  utterance.lang = 'en-US';
-  utterance.rate = 0.95;
-  window.speechSynthesis.speak(utterance);
+
+  if (speechQueueTimeoutId !== null) {
+    clearTimeout(speechQueueTimeoutId);
+    speechQueueTimeoutId = null;
+  }
+
+  try {
+    // Unstick paused / frozen speech engine queue
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+    // Cancel previous utterance cleanly
+    window.speechSynthesis.cancel();
+  } catch (cancelError) {
+    console.warn('SpeechSynthesis cancel warning:', cancelError);
+  }
+
+  // 40ms debounce buffer allows Chromium IPC audio channel to reset cleanly before speaking new text
+  speechQueueTimeoutId = setTimeout(() => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.95;
+
+      const voice = preferredSpeechVoice || getOrSelectPreferredVoice();
+      if (voice) {
+        utterance.voice = voice;
+      }
+
+      utterance.onend = () => {
+        activeSpeechUtterance = null;
+      };
+
+      utterance.onerror = (event) => {
+        activeSpeechUtterance = null;
+        if (event.error !== 'canceled' && event.error !== 'interrupted') {
+          console.warn('SpeechSynthesis error:', event.error);
+        }
+      };
+
+      // Retain reference globally to protect from V8 Garbage Collection mid-speech termination bug
+      activeSpeechUtterance = utterance;
+
+      window.speechSynthesis.speak(utterance);
+    } catch (speakError) {
+      console.warn('Failed to synthesize speech:', speakError);
+      activeSpeechUtterance = null;
+    }
+  }, 40);
 }
 
 /**
@@ -108,6 +214,30 @@ export function renderTopBar(data, isBackupDue) {
 
   // Update theme toggle icon
   renderThemeButton(data.ui_prefs.theme || 'dark');
+
+  // Update audio toggle icon
+  renderAudioButton(data.ui_prefs.auto_audio !== false);
+}
+
+/**
+ * Updates Audio Toggle Button Icon across topbar and session header.
+ */
+export function renderAudioButton(autoAudio) {
+  const isAuto = autoAudio !== false;
+  const iconHtml = isAuto ? ICONS.audio : ICONS.audioMuted;
+  const tooltip = isAuto ? 'Tắt tự động phát âm từ vựng' : 'Bật tự động phát âm từ vựng';
+
+  const topbarBtn = document.getElementById('topbar-audio-btn');
+  if (topbarBtn) {
+    topbarBtn.innerHTML = iconHtml;
+    topbarBtn.title = tooltip;
+  }
+
+  const sessionBtn = document.getElementById('session-audio-btn');
+  if (sessionBtn) {
+    sessionBtn.innerHTML = iconHtml;
+    sessionBtn.title = tooltip;
+  }
 }
 
 /**
@@ -1351,7 +1481,7 @@ export function applyStreakAccent(streak) {
 /**
  * Renders Session Progress Header with correct / incorrect segment status.
  */
-export function renderSessionProgressHeader({ current, total, isRedemption, streak, results = [], theme = 'dark', isAllDue = false }) {
+export function renderSessionProgressHeader({ current, total, isRedemption, streak, results = [], theme = 'dark', isAllDue = false, autoAudio = true }) {
   const progressHeader = document.getElementById('session-progress-header');
   if (!progressHeader) return;
 
@@ -1386,6 +1516,9 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
       ${segmentsHtml}
     </div>
     <div class="session-progress-right">
+      <button id="session-audio-btn" class="icon-btn session-theme-toggle" title="${autoAudio ? 'Tắt tự động phát âm' : 'Bật tự động phát âm'}">
+        ${autoAudio ? ICONS.audio : ICONS.audioMuted}
+      </button>
       <button id="session-theme-btn" class="icon-btn session-theme-toggle" title="${isDark ? 'Giao diện Sáng' : 'Giao diện Tối'}">
         ${isDark ? ICONS.sun : ICONS.moon}
       </button>
@@ -1558,6 +1691,7 @@ export function renderFlashRecallQuestion({
   onSelectOption,
   isFlagged,
   onToggleFlag,
+  autoAudio = true,
 }) {
   const stage = document.getElementById('main-stage');
 
@@ -1609,9 +1743,11 @@ export function renderFlashRecallQuestion({
     onToggleFlag();
   });
 
-  // Tự động phát âm từ vựng khi vào câu Flash Recall
-  if (question.promptWord) {
-    playPronunciation(question.promptWord);
+  // Tự động phát âm từ vựng khi vào câu Flash Recall (trì hoãn 120ms để DOM render mượt mà, không khựng UI)
+  if (autoAudio && question.promptWord) {
+    setTimeout(() => {
+      playPronunciation(question.promptWord);
+    }, 120);
   }
 
   let answered = false;
@@ -1769,7 +1905,7 @@ export function renderTcQuestion({
 /**
  * Shows the Hybrid Rationale card for TC question.
  */
-export function renderTcRationale({ question, isCorrect, chosenWord, onContinue }) {
+export function renderTcRationale({ question, isCorrect, chosenWord, onContinue, autoAudio = true }) {
   const container = document.getElementById('tc-rationale-placeholder');
   if (!container) return;
 
@@ -1858,9 +1994,11 @@ export function renderTcRationale({ question, isCorrect, chosenWord, onContinue 
     });
   });
 
-  // Tự động phát âm từ đáp án đúng khi hiển thị phân tích/đáp án câu TC
-  if (question.correctWord) {
-    playPronunciation(question.correctWord);
+  // Tự động phát âm từ đáp án đúng khi hiển thị phân tích/đáp án câu TC (trì hoãn 120ms để render mượt mà)
+  if (autoAudio && question.correctWord) {
+    setTimeout(() => {
+      playPronunciation(question.correctWord);
+    }, 120);
   }
 
   // Smooth scroll so explanation starts cleanly in view without clipping top or bottom
@@ -2072,12 +2210,14 @@ export function renderNewWordPreviewScreen({
   group,
   isFlagged = false,
   theme = 'dark',
+  autoAudio = true,
   onPrev,
   onNext,
   onSkip,
   onToggleFlag,
   onExit,
   onThemeToggle,
+  onAudioToggle,
 }) {
   const mainStage = document.getElementById('main-stage');
   const progressHeader = document.getElementById('session-progress-header');
@@ -2105,6 +2245,9 @@ export function renderNewWordPreviewScreen({
         ${segmentsHtml}
       </div>
       <div class="session-progress-right">
+        <button id="session-audio-btn" class="icon-btn session-theme-toggle" title="${autoAudio ? 'Tắt tự động phát âm' : 'Bật tự động phát âm'}">
+          ${autoAudio ? ICONS.audio : ICONS.audioMuted}
+        </button>
         <button id="session-theme-btn" class="icon-btn session-theme-toggle" title="${isDark ? 'Giao diện Sáng' : 'Giao diện Tối'}">
           ${isDark ? ICONS.sun : ICONS.moon}
         </button>
@@ -2117,6 +2260,7 @@ export function renderNewWordPreviewScreen({
     document.getElementById('session-home-btn')?.addEventListener('click', onExit);
     document.getElementById('btn-exit-session')?.addEventListener('click', onExit);
     document.getElementById('session-theme-btn')?.addEventListener('click', onThemeToggle);
+    document.getElementById('session-audio-btn')?.addEventListener('click', onAudioToggle);
   }
 
   // Word definitions list
@@ -2293,6 +2437,11 @@ export function renderNewWordPreviewScreen({
     mainStage.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  playPronunciation(word.word);
+  // Tự động phát âm từ mới khi lướt thẻ (trì hoãn 100ms để transition mượt mà)
+  if (autoAudio && word.word) {
+    setTimeout(() => {
+      playPronunciation(word.word);
+    }, 100);
+  }
 }
 
