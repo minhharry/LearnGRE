@@ -12,7 +12,7 @@
     "concurrency": 4
   },
   "generation": {
-    "tc_questions_per_word": 3,
+    "tc_questions_per_word": 9,
     "words_per_group": 30,
     "total_groups": 32,
     "default_group": 1,
