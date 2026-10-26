@@ -373,6 +373,7 @@ export function renderOverviewDashboard({
   onStartSpeedMatch,
   onStartAllDueSession,
   onViewErrorNotebook,
+  onReturnGroups,
 }) {
   stopCountdownTimer();
 
@@ -577,6 +578,9 @@ export function renderOverviewDashboard({
         </div>
 
         <div class="overview-actions">
+          <button id="btn-overview-groups" class="btn-secondary" title="Về Danh sách Groups (Trang chủ)">
+            ${ICONS.grid} <span>Danh sách Groups</span>
+          </button>
           <button id="btn-overview-continue-group" class="btn-primary" title="Vào học tiếp Group ${currentGroup}">
             ${ICONS.arrowRight} <span>Tiếp tục Group ${currentGroup}</span>
           </button>
@@ -839,6 +843,10 @@ export function renderOverviewDashboard({
   // --------------------------------------------------------------------------
   // Attach Event Handlers
   // --------------------------------------------------------------------------
+  document.getElementById('btn-overview-groups')?.addEventListener('click', () => {
+    onReturnGroups?.();
+  });
+
   document.getElementById('btn-overview-continue-group')?.addEventListener('click', () => {
     onStartGroupSession(currentGroup);
   });
@@ -1221,7 +1229,7 @@ export function renderGroupDashboard({
 /**
  * Renders the Error Notebook View.
  */
-export function renderErrorNotebook({ vocabList, storageData, onStartErrorSession, onToggleFlag }) {
+export function renderErrorNotebook({ vocabList, storageData, onStartErrorSession, onToggleFlag, onReturnGroups }) {
   const stage = document.getElementById('main-stage');
   const flaggedWords = vocabList.filter((w) => {
     const rec = storageData.words[w.id];
@@ -1236,6 +1244,9 @@ export function renderErrorNotebook({ vocabList, storageData, onStartErrorSessio
           <p>Tập hợp các từ bị nhớ nhầm hoặc thao tác sai tốc độ cao cần củng cố phản xạ.</p>
         </div>
         <div class="dashboard-actions">
+          <button id="btn-error-return-groups" class="btn-secondary" title="Về Danh sách Groups (Trang chủ)">
+            ${ICONS.grid} <span>Danh sách Groups</span>
+          </button>
           <button id="btn-practice-errors" class="btn-primary" ${flaggedWords.length === 0 ? 'disabled' : ''}>
             ${ICONS.arrowRight} Luyện tập các câu sai (${flaggedWords.length})
           </button>
@@ -1298,6 +1309,9 @@ export function renderErrorNotebook({ vocabList, storageData, onStartErrorSessio
     </div>
   `;
 
+  document.getElementById('btn-error-return-groups')?.addEventListener('click', () => {
+    onReturnGroups?.();
+  });
   document.getElementById('btn-practice-errors')?.addEventListener('click', onStartErrorSession);
 
   stage.querySelectorAll('.audio-btn').forEach((btn) => {
@@ -1363,7 +1377,7 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
 
   progressHeader.innerHTML = `
     <div class="session-progress-left">
-      <button id="session-home-btn" class="session-home-btn brand-logo-icon" title="Quay lại trang chủ" aria-label="Quay lại trang chủ">G</button>
+      <button id="session-home-btn" class="session-home-btn brand-logo-icon" title="Về Danh sách Groups (Trang chủ)" aria-label="Về Danh sách Groups (Trang chủ)">G</button>
       ${isAllDue ? '<span class="badge badge-yellow" style="font-size: 11px; font-weight: 700;">Tổng ôn tới hạn</span>' : ''}
       ${isRedemption ? '<span class="badge badge-amber" style="font-size: 10.5px;">Gỡ lỗi</span>' : ''}
       <span class="session-counter-text">Câu ${current}/${total}</span>
@@ -2002,8 +2016,8 @@ export function renderSessionSummary({ metrics, todaySessions = 0, onRestartSess
       }
 
       <div class="summary-actions">
-        <button id="btn-summary-home" class="btn-secondary">
-          Quay lại Danh sách Từ
+        <button id="btn-summary-home" class="btn-secondary" title="Về Danh sách Groups (Trang chủ)">
+          ${ICONS.grid} <span>Về Danh sách Groups</span>
         </button>
         <button id="btn-summary-restart" class="btn-primary">
           ${ICONS.arrowRight} ${isAllDue ? 'Tiếp tục Ôn tập' : 'Luyện tiếp phiên mới'}

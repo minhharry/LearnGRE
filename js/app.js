@@ -175,6 +175,11 @@ class AppController {
       renderOverviewDashboard({
         vocabList: this.vocabList,
         storageData: this.storageData,
+        onReturnGroups: () => {
+          this.currentView = 'dashboard';
+          this.renderSidebar();
+          this.renderCurrentView();
+        },
         onSelectGroup: (g) => {
           this.currentGroup = g;
           this.storageData.progression.current_group = g;
@@ -221,6 +226,11 @@ class AppController {
       renderErrorNotebook({
         vocabList: this.vocabList,
         storageData: this.storageData,
+        onReturnGroups: () => {
+          this.currentView = 'dashboard';
+          this.renderSidebar();
+          this.renderCurrentView();
+        },
         onStartErrorSession: () => this.startSession('errors'),
         onToggleFlag: (wordId) => this.toggleWordFlag(wordId),
       });
@@ -300,7 +310,7 @@ class AppController {
           }
         },
         onReturnHome: () => {
-          this.currentView = 'overview';
+          this.currentView = 'dashboard';
           this.renderSidebar();
           this.renderCurrentView();
         },
@@ -503,12 +513,20 @@ class AppController {
       this.renderSidebar();
     });
 
-    // Brand Logo Button
-    document.getElementById('brand-home-btn')?.addEventListener('click', () => {
-      this.currentView = 'overview';
+    // Brand Logo Button - Return to Danh sách Groups (Trang chủ)
+    const brandHomeBtn = document.getElementById('brand-home-btn');
+    const handleReturnToGroups = () => {
+      this.currentView = 'dashboard';
       this.renderSidebar();
       this.renderCurrentView();
       this.closeDrawer();
+    };
+    brandHomeBtn?.addEventListener('click', handleReturnToGroups);
+    brandHomeBtn?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleReturnToGroups();
+      }
     });
 
     // Nav Item: Overview Dashboard
@@ -685,15 +703,16 @@ class AppController {
         return;
       }
 
-      // Escape key: close modal or exit session
+      // Escape key: close modal or exit to Danh sách Groups
       if (e.key === 'Escape') {
         if (shortcutsModal.classList.contains('active') || backupModal.classList.contains('active')) {
           shortcutsModal.classList.remove('active');
           backupModal.classList.remove('active');
           return;
         }
-        if (this.currentView === 'session') {
+        if (this.currentView === 'session' || this.currentView === 'overview' || this.currentView === 'errors') {
           this.currentView = 'dashboard';
+          document.body.classList.remove('in-session');
           this.renderSidebar();
           this.renderCurrentView();
           return;
@@ -723,6 +742,19 @@ class AppController {
           if (!shortcutsModal.classList.contains('active') && !backupModal.classList.contains('active')) {
             e.preventDefault();
             this.currentView = 'overview';
+            this.renderSidebar();
+            this.renderCurrentView();
+            return;
+          }
+        }
+      }
+
+      // Key H: Return to Danh sách Groups (Trang chủ)
+      if (this.currentView !== 'session') {
+        if (e.key === 'h' || e.key === 'H') {
+          if (!shortcutsModal.classList.contains('active') && !backupModal.classList.contains('active')) {
+            e.preventDefault();
+            this.currentView = 'dashboard';
             this.renderSidebar();
             this.renderCurrentView();
             return;
