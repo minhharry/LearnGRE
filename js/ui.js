@@ -2060,3 +2060,239 @@ export function showToast(message, type = 'info') {
     }, 300);
   }, 3200);
 }
+
+/**
+ * Renders the Pre-Session New Word Flashcard screen.
+ */
+export function renderNewWordPreviewScreen({
+  word,
+  example,
+  currentIndex,
+  totalWords,
+  group,
+  isFlagged = false,
+  theme = 'dark',
+  onPrev,
+  onNext,
+  onSkip,
+  onToggleFlag,
+  onExit,
+  onThemeToggle,
+}) {
+  const mainStage = document.getElementById('main-stage');
+  const progressHeader = document.getElementById('session-progress-header');
+
+  if (progressHeader) {
+    progressHeader.style.display = 'flex';
+    let segmentsHtml = '';
+    for (let i = 0; i < totalWords; i++) {
+      let statusClass = '';
+      if (i === currentIndex) {
+        statusClass = 'active';
+      } else if (i < currentIndex) {
+        statusClass = 'correct';
+      }
+      segmentsHtml += `<div class="progress-segment ${statusClass}" id="prev-seg-${i}"></div>`;
+    }
+    const isDark = theme === 'dark';
+    progressHeader.innerHTML = `
+      <div class="session-progress-left">
+        <button id="session-home-btn" class="session-home-btn brand-logo-icon" title="Về Danh sách Groups (Trang chủ)" aria-label="Về Danh sách Groups">G</button>
+        <span class="badge badge-blue" style="font-size: 11px; font-weight: 700;">Làm quen từ mới</span>
+        <span class="session-counter-text">Thẻ ${currentIndex + 1}/${totalWords}</span>
+      </div>
+      <div class="session-progress-track">
+        ${segmentsHtml}
+      </div>
+      <div class="session-progress-right">
+        <button id="session-theme-btn" class="icon-btn session-theme-toggle" title="${isDark ? 'Giao diện Sáng' : 'Giao diện Tối'}">
+          ${isDark ? ICONS.sun : ICONS.moon}
+        </button>
+        <button id="btn-exit-session" class="icon-btn" title="Thoát phiên (Esc)">
+          ${ICONS.close}
+        </button>
+      </div>
+    `;
+
+    document.getElementById('session-home-btn')?.addEventListener('click', onExit);
+    document.getElementById('btn-exit-session')?.addEventListener('click', onExit);
+    document.getElementById('session-theme-btn')?.addEventListener('click', onThemeToggle);
+  }
+
+  // Word definitions list
+  const defsList = word.definitions || [];
+  const definitionsHtml = defsList.length > 0
+    ? `
+      <div class="flashcard-section">
+        <div class="flashcard-section-label">Định nghĩa tiếng Anh</div>
+        <ul class="flashcard-en-list">
+          ${defsList.map((d) => `<li>${d}</li>`).join('')}
+        </ul>
+      </div>
+    `
+    : '';
+
+  // GRE Context Example
+  const exampleHtml = example
+    ? `
+      <div class="flashcard-section flashcard-example-section">
+        <div class="flashcard-section-label">
+          <span>Ví dụ câu thực tế GRE</span>
+          ${example.domain ? `<span class="domain-pill">${example.domain}</span>` : ''}
+        </div>
+        <div class="flashcard-sentence-text">${example.sentence}</div>
+        ${example.translation ? `<div class="flashcard-sentence-trans">${example.translation}</div>` : ''}
+      </div>
+    `
+    : '';
+
+  // Synonyms and Antonyms
+  const synonyms = word.synonyms || [];
+  const antonyms = word.antonyms || [];
+  const hasTags = synonyms.length > 0 || antonyms.length > 0;
+  const tagsHtml = hasTags
+    ? `
+      <div class="flashcard-tags-row">
+        ${
+          synonyms.length > 0
+            ? `
+          <div class="flashcard-tag-group">
+            <span class="flashcard-tag-label">Đồng nghĩa:</span>
+            <div class="flashcard-tag-pills">
+              ${synonyms.map((s) => `<span class="tag-pill tag-syn">${s}</span>`).join('')}
+            </div>
+          </div>
+        `
+            : ''
+        }
+        ${
+          antonyms.length > 0
+            ? `
+          <div class="flashcard-tag-group">
+            <span class="flashcard-tag-label">Trái nghĩa:</span>
+            <div class="flashcard-tag-pills">
+              ${antonyms.map((a) => `<span class="tag-pill tag-ant">${a}</span>`).join('')}
+            </div>
+          </div>
+        `
+            : ''
+        }
+      </div>
+    `
+    : '';
+
+  // Related Word Forms
+  const forms = word.forms || {};
+  const formsList = [];
+  if (forms.noun && forms.noun.length > 0) formsList.push({ pos: 'noun', words: forms.noun.join(', ') });
+  if (forms.verb && forms.verb.length > 0) formsList.push({ pos: 'verb', words: forms.verb.join(', ') });
+  if (forms.adj && forms.adj.length > 0) formsList.push({ pos: 'adj', words: forms.adj.join(', ') });
+  if (forms.adv && forms.adv.length > 0) formsList.push({ pos: 'adv', words: forms.adv.join(', ') });
+
+  const formsHtml = formsList.length > 0
+    ? `
+      <div class="flashcard-forms-row">
+        <span class="flashcard-tag-label">Họ từ liên quan:</span>
+        <div class="flashcard-forms-pills">
+          ${formsList.map((f) => `<span class="form-pill"><strong class="form-pos">${f.pos}:</strong> ${f.words}</span>`).join('')}
+        </div>
+      </div>
+    `
+    : '';
+
+  const isLastCard = currentIndex >= totalWords - 1;
+
+  mainStage.innerHTML = `
+    <div class="question-viewport animate-fade-in">
+      <div class="flashcard-preview-container">
+        
+        <div class="flashcard-meta-row">
+          <div class="flashcard-meta-left">
+            <span class="badge badge-blue">Group ${group} &bull; TỪ MỚI (Level 0)</span>
+            <span class="flashcard-step-badge">Thẻ ${currentIndex + 1} / ${totalWords}</span>
+          </div>
+          <div class="question-card-actions">
+            <button id="btn-preview-audio" class="action-chip-btn" title="Phát âm (P)">
+              ${ICONS.audio} <span>Nghe (P)</span>
+            </button>
+            <button id="btn-preview-flag" class="action-chip-btn ${isFlagged ? 'flagged' : ''}" title="Ghi vào Sổ tay câu sai (S)">
+              ${ICONS.flag} <span>${isFlagged ? 'Đã ghim (S)' : 'Ghim (S)'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flashcard-main-card">
+          <div class="flashcard-word-header">
+            <div class="flashcard-word-title-group">
+              <h1 class="flashcard-word-text">${word.word}</h1>
+              <span class="flash-pos-pill">${word.pos}</span>
+            </div>
+            <button id="btn-preview-audio-main" class="flashcard-audio-fab" title="Phát âm: ${word.word}">
+              ${ICONS.audio}
+            </button>
+          </div>
+
+          <div class="flashcard-vi-box">
+            <div class="flashcard-section-label">
+              ${ICONS.book} <span>Nghĩa tiếng Việt</span>
+            </div>
+            <div class="flashcard-vi-text">${word.vi_gloss}</div>
+          </div>
+
+          ${definitionsHtml}
+          ${exampleHtml}
+          ${tagsHtml}
+          ${formsHtml}
+        </div>
+
+        <div class="flashcard-footer-controls">
+          <div class="flashcard-footer-left">
+            <button id="btn-preview-prev" class="btn-secondary ${currentIndex === 0 ? 'disabled' : ''}" ${currentIndex === 0 ? 'disabled' : ''} title="Từ trước (Mũi tên trái ←)">
+              &larr; <span>Từ trước</span>
+            </button>
+          </div>
+
+          <div class="flashcard-footer-center">
+            <span class="preview-shortcut-hint">
+              Phím <span class="keycap">Space</span> hoặc <span class="keycap">&rarr;</span> chuyển tiếp &bull; <span class="keycap">P</span> phát âm
+            </span>
+          </div>
+
+          <div class="flashcard-footer-right">
+            ${
+              !isLastCard
+                ? `<button id="btn-preview-next" class="btn-primary" title="Từ tiếp theo (Space / Enter)">
+                     <span>Tiếp theo</span> <span class="keycap" style="background: rgba(255,255,255,0.25); color: #fff; border-color: transparent;">Space</span> &rarr;
+                   </button>`
+                : `<button id="btn-preview-start-session" class="btn-primary btn-start-practice" title="Bắt đầu bài tập (Space / Enter)">
+                     ${ICONS.bolt} <span>Bắt đầu làm bài</span> <span class="keycap" style="background: rgba(255,255,255,0.25); color: #fff; border-color: transparent;">Space</span>
+                   </button>`
+            }
+          </div>
+        </div>
+
+        <div class="flashcard-skip-row">
+          <button id="btn-preview-skip" class="skip-preview-link" title="Bỏ qua làm quen từ mới và vào bài tập ngay">
+            Bỏ qua làm quen &bull; Vào làm bài trắc nghiệm ngay
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-preview-prev')?.addEventListener('click', onPrev);
+  document.getElementById('btn-preview-next')?.addEventListener('click', onNext);
+  document.getElementById('btn-preview-start-session')?.addEventListener('click', onNext);
+  document.getElementById('btn-preview-skip')?.addEventListener('click', onSkip);
+  document.getElementById('btn-preview-audio')?.addEventListener('click', () => playPronunciation(word.word));
+  document.getElementById('btn-preview-audio-main')?.addEventListener('click', () => playPronunciation(word.word));
+  document.getElementById('btn-preview-flag')?.addEventListener('click', onToggleFlag);
+
+  if (mainStage) {
+    mainStage.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  playPronunciation(word.word);
+}
+

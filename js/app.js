@@ -38,6 +38,7 @@ import {
   renderThemeButton,
   stopCountdownTimer,
   showToast,
+  renderNewWordPreviewScreen,
   ICONS,
 } from './ui.js';
 
@@ -52,6 +53,9 @@ class AppController {
     this.currentView = 'dashboard'; // 'dashboard' (default) | 'overview' | 'session' | 'errors'
     this.questionStartTime = 0;
     this.isWaitingForContinue = false;
+    this.isPreviewingNewWords = false;
+    this.previewWordList = [];
+    this.currentPreviewIndex = 0;
   }
 
   async init() {
@@ -273,7 +277,84 @@ class AppController {
       mode,
     });
 
+    if (this.activeSession.newWords && this.activeSession.newWords.length > 0 && mode !== 'speed_match_only') {
+      this.startNewWordsPreview(this.activeSession.newWords);
+    } else {
+      this.advanceToNextQuestion();
+    }
+  }
+
+  /**
+   * Starts pre-session flashcard preview deck for new words.
+   */
+  startNewWordsPreview(newWords) {
+    this.isPreviewingNewWords = true;
+    this.previewWordList = newWords;
+    this.currentPreviewIndex = 0;
+    this.renderCurrentPreviewCard();
+  }
+
+  renderCurrentPreviewCard() {
+    if (!this.isPreviewingNewWords || this.previewWordList.length === 0) return;
+    const word = this.previewWordList[this.currentPreviewIndex];
+    const example = this.activeSession ? this.activeSession.getWordExample(word) : null;
+    const rec = this.storageData.words[word.id] || {};
+    const isFlagged = !!rec.flagged_error;
+
+    renderNewWordPreviewScreen({
+      word,
+      example,
+      currentIndex: this.currentPreviewIndex,
+      totalWords: this.previewWordList.length,
+      group: this.currentGroup,
+      isFlagged,
+      theme: this.storageData.ui_prefs.theme || 'dark',
+      onPrev: () => this.handlePrevPreviewWord(),
+      onNext: () => this.handleNextPreviewWord(),
+      onSkip: () => this.handleFinishPreview(),
+      onToggleFlag: () => this.togglePreviewWordFlag(word.id),
+      onExit: () => this.handleExitSession(),
+      onThemeToggle: () => {
+        this.toggleTheme();
+        this.renderCurrentPreviewCard();
+      },
+    });
+  }
+
+  handleNextPreviewWord() {
+    if (this.currentPreviewIndex < this.previewWordList.length - 1) {
+      this.currentPreviewIndex++;
+      this.renderCurrentPreviewCard();
+    } else {
+      this.handleFinishPreview();
+    }
+  }
+
+  handlePrevPreviewWord() {
+    if (this.currentPreviewIndex > 0) {
+      this.currentPreviewIndex--;
+      this.renderCurrentPreviewCard();
+    }
+  }
+
+  handleFinishPreview() {
+    this.isPreviewingNewWords = false;
     this.advanceToNextQuestion();
+  }
+
+  togglePreviewWordFlag(wordId) {
+    const rec = ensureWordRecord(this.storageData, wordId);
+    rec.flagged_error = !rec.flagged_error;
+    saveProgressData(this.storageData);
+    this.renderCurrentPreviewCard();
+  }
+
+  handleExitSession() {
+    this.isPreviewingNewWords = false;
+    this.currentView = 'dashboard';
+    document.body.classList.remove('in-session');
+    this.renderSidebar();
+    this.renderCurrentView();
   }
 
   /**
@@ -711,6 +792,7 @@ class AppController {
           return;
         }
         if (this.currentView === 'session' || this.currentView === 'overview' || this.currentView === 'errors') {
+          this.isPreviewingNewWords = false;
           this.currentView = 'dashboard';
           document.body.classList.remove('in-session');
           this.renderSidebar();
@@ -764,6 +846,33 @@ class AppController {
 
       // If in active session
       if (this.currentView === 'session') {
+        // If in pre-session new words flashcard preview
+        if (this.isPreviewingNewWords) {
+          if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight') {
+            e.preventDefault();
+            this.handleNextPreviewWord();
+            return;
+          }
+          if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            this.handlePrevPreviewWord();
+            return;
+          }
+          if (e.key === 'p' || e.key === 'P') {
+            e.preventDefault();
+            const word = this.previewWordList[this.currentPreviewIndex];
+            if (word) playPronunciation(word.word);
+            return;
+          }
+          if (e.key === 's' || e.key === 'S') {
+            e.preventDefault();
+            const word = this.previewWordList[this.currentPreviewIndex];
+            if (word) this.togglePreviewWordFlag(word.id);
+            return;
+          }
+          return;
+        }
+
         const q = this.currentQuestionState;
         if (!q) return;
 

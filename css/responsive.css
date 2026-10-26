@@ -759,7 +759,41 @@
   .matrix-group-meta {
     font-size: 9px;
   }
+
+  /* Pre-session Flashcard responsive on mobile */
+  .flashcard-preview-container {
+    padding: 6px 4px 18px 4px;
+  }
+
+  .flashcard-main-card {
+    padding: 16px 14px;
+  }
+
+  .flashcard-word-text {
+    font-size: 26px;
+  }
+
+  .flashcard-vi-text {
+    font-size: 15.5px;
+  }
+
+  .flashcard-footer-controls {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .flashcard-footer-left button,
+  .flashcard-footer-right button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .flashcard-footer-center {
+    text-align: center;
+  }
 }
+
 
 @media (max-width: 359px) {
   .overview-kpi-grid {

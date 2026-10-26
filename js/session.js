@@ -43,6 +43,9 @@ export class SessionManager {
     this.sessionStartTime = Date.now();
     this.results = []; // { questionType, wordId, isCorrect, reaction, elapsedMs }
 
+    // Words with Level 0 that need introduction before session drills
+    this.newWords = [];
+
     this.buildSessionQueue();
   }
 
@@ -165,6 +168,18 @@ export class SessionManager {
     // Fallback if targetWords is small: pick any from group
     if (targetWords.length < 4) {
       targetWords.push(...shuffleArray(groupWords).slice(0, 6));
+    }
+
+    // Collect new words (Level 0) present in this session for pre-session flashcard intro
+    const seenNewWordIds = new Set();
+    this.newWords = [];
+    for (const w of targetWords) {
+      const rec = this.storageData.words[w.id];
+      const isNew = !rec || rec.level === 0;
+      if (isNew && !seenNewWordIds.has(w.id)) {
+        seenNewWordIds.add(w.id);
+        this.newWords.push(w);
+      }
     }
 
     // Mode: Speed Match Only
@@ -439,4 +454,24 @@ export class SessionManager {
       nextGroup: !isLastGroup ? this.group + 1 : null,
     };
   }
+
+  /**
+   * Retrieves GRE context example sentence and translation for a word.
+   */
+  getWordExample(word) {
+    if (!word) return null;
+    const templates = this.questionsByTargetId.get(word.id);
+    if (!templates || templates.length === 0) return null;
+    const template = templates[0];
+    const highlightedSentence = (template.sentence || '').replace(
+      /\[BLANK\]/g,
+      `<strong class="highlight-target-word">${word.word}</strong>`
+    );
+    return {
+      sentence: highlightedSentence,
+      translation: template.rationale || '',
+      domain: template.domain || '',
+    };
+  }
 }
+
