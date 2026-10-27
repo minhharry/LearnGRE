@@ -40,6 +40,8 @@ import {
   stopCountdownTimer,
   showToast,
   renderNewWordPreviewScreen,
+  updateSpeechPreferences,
+  getAvailableEnglishVoices,
   ICONS,
 } from './ui.js';
 
@@ -67,6 +69,14 @@ class AppController {
     // Apply stored theme (default to dark theme modeled after VS Code)
     const initialTheme = this.storageData.ui_prefs.theme || 'dark';
     this.applyTheme(initialTheme);
+
+    // Initialize speech synthesis preferences with full loudness and optimal projection
+    updateSpeechPreferences({
+      volume: this.storageData.ui_prefs.audio_volume ?? 1.0,
+      rate: this.storageData.ui_prefs.audio_rate ?? 0.95,
+      pitch: this.storageData.ui_prefs.audio_pitch ?? 1.05,
+      preferredVoiceName: this.storageData.ui_prefs.preferred_voice_name || '',
+    });
 
     // Apply initial streak accent color
     applyStreakAccent(this.storageData.progression.daily_streak || 1);
@@ -678,6 +688,7 @@ class AppController {
     // Modals
     const shortcutsModal = document.getElementById('shortcuts-modal');
     const backupModal = document.getElementById('backup-modal');
+    const audioModal = document.getElementById('audio-settings-modal');
 
     const handleOpenShortcuts = () => {
       shortcutsModal?.classList.add('active');
@@ -690,10 +701,87 @@ class AppController {
       backupModal?.classList.add('active');
     });
 
+    document.getElementById('topbar-audio-settings-btn')?.addEventListener('click', () => {
+      this.openAudioSettingsModal();
+    });
+
+    document.getElementById('sidebar-audio-settings-btn')?.addEventListener('click', () => {
+      this.openAudioSettingsModal();
+    });
+
+    // Audio Settings Modal Interactions
+    const volumeSlider = document.getElementById('audio-volume-slider');
+    const volumeVal = document.getElementById('audio-volume-val');
+    const rateSlider = document.getElementById('audio-rate-slider');
+    const rateVal = document.getElementById('audio-rate-val');
+    const pitchSlider = document.getElementById('audio-pitch-slider');
+    const pitchVal = document.getElementById('audio-pitch-val');
+    const voiceSelect = document.getElementById('audio-voice-select');
+    const modalAutoAudioToggle = document.getElementById('modal-auto-audio-toggle');
+
+    volumeSlider?.addEventListener('input', (e) => {
+      const vol = parseFloat(e.target.value);
+      this.storageData.ui_prefs.audio_volume = vol;
+      if (volumeVal) {
+        volumeVal.textContent = `${Math.round(vol * 100)}%${vol === 1 ? ' (Tối đa)' : ''}`;
+      }
+      updateSpeechPreferences({ volume: vol });
+      saveProgressData(this.storageData);
+    });
+
+    rateSlider?.addEventListener('input', (e) => {
+      const rate = parseFloat(e.target.value);
+      this.storageData.ui_prefs.audio_rate = rate;
+      if (rateVal) {
+        rateVal.textContent = `${rate.toFixed(2)}x`;
+      }
+      updateSpeechPreferences({ rate });
+      saveProgressData(this.storageData);
+    });
+
+    pitchSlider?.addEventListener('input', (e) => {
+      const pitch = parseFloat(e.target.value);
+      this.storageData.ui_prefs.audio_pitch = pitch;
+      if (pitchVal) {
+        pitchVal.textContent = `${pitch.toFixed(2)}x`;
+      }
+      updateSpeechPreferences({ pitch });
+      saveProgressData(this.storageData);
+    });
+
+    voiceSelect?.addEventListener('change', (e) => {
+      const voiceName = e.target.value;
+      this.storageData.ui_prefs.preferred_voice_name = voiceName;
+      updateSpeechPreferences({ preferredVoiceName: voiceName });
+      saveProgressData(this.storageData);
+      showToast('Đã cập nhật giọng đọc', 'info');
+    });
+
+    modalAutoAudioToggle?.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      this.storageData.ui_prefs.auto_audio = isChecked;
+      saveProgressData(this.storageData);
+      renderAudioButton(isChecked);
+      showToast(
+        isChecked ? 'Đã bật tự động phát âm' : 'Đã tắt tự động phát âm',
+        'info'
+      );
+    });
+
+    document.getElementById('btn-test-audio')?.addEventListener('click', () => {
+      const sampleWord =
+        this.vocabList && this.vocabList.length > 0
+          ? this.vocabList[Math.floor(Math.random() * Math.min(20, this.vocabList.length))].word
+          : 'eloquent';
+      playPronunciation(sampleWord);
+      showToast(`Đang phát âm: ${sampleWord}`, 'info');
+    });
+
     document.querySelectorAll('.modal-close-btn, .modal-cancel-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        shortcutsModal.classList.remove('active');
-        backupModal.classList.remove('active');
+        shortcutsModal?.classList.remove('active');
+        backupModal?.classList.remove('active');
+        audioModal?.classList.remove('active');
       });
     });
 
@@ -803,9 +891,14 @@ class AppController {
 
       // Escape key: close modal or exit to Danh sách Groups
       if (e.key === 'Escape') {
-        if (shortcutsModal.classList.contains('active') || backupModal.classList.contains('active')) {
-          shortcutsModal.classList.remove('active');
-          backupModal.classList.remove('active');
+        if (
+          shortcutsModal?.classList.contains('active') ||
+          backupModal?.classList.contains('active') ||
+          audioModal?.classList.contains('active')
+        ) {
+          shortcutsModal?.classList.remove('active');
+          backupModal?.classList.remove('active');
+          audioModal?.classList.remove('active');
           return;
         }
         if (this.currentView === 'session' || this.currentView === 'overview' || this.currentView === 'errors') {
@@ -1010,10 +1103,73 @@ class AppController {
     this.storageData.ui_prefs.auto_audio = !current;
     saveProgressData(this.storageData);
     renderAudioButton(!current);
+    const modalAutoAudioToggle = document.getElementById('modal-auto-audio-toggle');
+    if (modalAutoAudioToggle) {
+      modalAutoAudioToggle.checked = !current;
+    }
     showToast(
       !current ? 'Đã bật tự động phát âm từ vựng' : 'Đã tắt tự động phát âm từ vựng',
       'info'
     );
+  }
+
+  openAudioSettingsModal() {
+    const audioModal = document.getElementById('audio-settings-modal');
+    if (!audioModal) return;
+
+    const volumeSlider = document.getElementById('audio-volume-slider');
+    const volumeVal = document.getElementById('audio-volume-val');
+    const rateSlider = document.getElementById('audio-rate-slider');
+    const rateVal = document.getElementById('audio-rate-val');
+    const pitchSlider = document.getElementById('audio-pitch-slider');
+    const pitchVal = document.getElementById('audio-pitch-val');
+    const voiceSelect = document.getElementById('audio-voice-select');
+    const modalAutoAudioToggle = document.getElementById('modal-auto-audio-toggle');
+
+    const currentVolume = this.storageData.ui_prefs.audio_volume ?? 1.0;
+    const currentRate = this.storageData.ui_prefs.audio_rate ?? 0.95;
+    const currentPitch = this.storageData.ui_prefs.audio_pitch ?? 1.05;
+    const currentVoice = this.storageData.ui_prefs.preferred_voice_name || '';
+    const currentAuto = this.storageData.ui_prefs.auto_audio !== false;
+
+    if (volumeSlider && volumeVal) {
+      volumeSlider.value = currentVolume;
+      volumeVal.textContent = `${Math.round(currentVolume * 100)}%${currentVolume === 1 ? ' (Tối đa)' : ''}`;
+    }
+
+    if (rateSlider && rateVal) {
+      rateSlider.value = currentRate;
+      rateVal.textContent = `${currentRate.toFixed(2)}x`;
+    }
+
+    if (pitchSlider && pitchVal) {
+      pitchSlider.value = currentPitch;
+      pitchVal.textContent = `${currentPitch.toFixed(2)}x`;
+    }
+
+    if (modalAutoAudioToggle) {
+      modalAutoAudioToggle.checked = currentAuto;
+    }
+
+    if (voiceSelect) {
+      const voices = getAvailableEnglishVoices();
+      voiceSelect.innerHTML = `<option value="">Tự động chọn giọng to & rõ nhất (Khuyên dùng)</option>`;
+      voices.forEach((voice) => {
+        const option = document.createElement('option');
+        option.value = voice.name;
+        let label = `${voice.name} (${voice.lang})`;
+        if (voice.name.includes('Natural') || voice.name.includes('Google') || voice.name.includes('Zira')) {
+          label += ' - [To & Rõ nét]';
+        }
+        option.textContent = label;
+        if (voice.name === currentVoice) {
+          option.selected = true;
+        }
+        voiceSelect.appendChild(option);
+      });
+    }
+
+    audioModal.classList.add('active');
   }
 }
 

@@ -31,21 +31,59 @@ export const ICONS = {
   layers: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
   target: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="6" r="6"/><circle cx="12" cy="2" r="2"/></svg>`,
   grid: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
+  settings: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
 };
 
 /**
- * Cached SpeechSynthesis voices and active utterance to prevent Chromium V8 Garbage Collection bug.
+ * SpeechSynthesis state, voice caching, and configuration.
  */
 let cachedSpeechVoices = [];
 let preferredSpeechVoice = null;
 let activeSpeechUtterance = null;
 let speechQueueTimeoutId = null;
 
+let activeSpeechConfig = {
+  volume: 1.0,
+  rate: 0.95,
+  pitch: 1.05,
+  preferredVoiceName: '',
+};
+
 /**
- * Selects optimal English voice prioritizing native offline/local voices (zero network latency).
+ * Updates runtime speech configuration preferences (volume, rate, pitch, preferred voice).
  */
-export function getOrSelectPreferredVoice() {
-  if (!('speechSynthesis' in window)) return null;
+export function updateSpeechPreferences(newPreferences = {}) {
+  activeSpeechConfig = {
+    ...activeSpeechConfig,
+    ...newPreferences,
+  };
+  preferredSpeechVoice = getOrSelectPreferredVoice(activeSpeechConfig.preferredVoiceName);
+}
+
+/**
+ * Returns list of available English voices registered with the browser.
+ */
+export function getAvailableEnglishVoices() {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
+  if (!cachedSpeechVoices || cachedSpeechVoices.length === 0) {
+    cachedSpeechVoices = window.speechSynthesis.getVoices() || [];
+  }
+  return cachedSpeechVoices.filter(
+    (voice) => voice.lang && voice.lang.toLowerCase().startsWith('en')
+  );
+}
+
+/**
+ * Selects optimal English voice prioritizing high-clarity and maximum perceived loudness:
+ * 1. Explicit user-chosen voice.
+ * 2. High-fidelity Neural/Natural voices (Edge: Microsoft Aria / Jenny / Guy Natural).
+ * 3. High-gain Google voices (Chrome: Google US English / Google UK English).
+ * 4. Crisp high-projection OS voices (Zira, Samantha, Jenny, Aria, Karen, Victoria).
+ * 5. Other US English voices (excluding muffled David if alternatives exist).
+ * 6. Fallback English voices.
+ */
+export function getOrSelectPreferredVoice(preferredVoiceName = '') {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
 
   if (!cachedSpeechVoices || cachedSpeechVoices.length === 0) {
     cachedSpeechVoices = window.speechSynthesis.getVoices() || [];
@@ -53,28 +91,61 @@ export function getOrSelectPreferredVoice() {
 
   if (cachedSpeechVoices.length === 0) return null;
 
-  // 1. Prefer English voices that are local service (completely offline, zero network latency)
-  const localEnglishVoice = cachedSpeechVoices.find(
-    (voice) => voice.localService && voice.lang && voice.lang.toLowerCase().startsWith('en')
-  );
-  if (localEnglishVoice) return localEnglishVoice;
+  // 1. Explicitly chosen voice
+  const targetVoiceName = preferredVoiceName || activeSpeechConfig.preferredVoiceName;
+  if (targetVoiceName) {
+    const explicitVoice = cachedSpeechVoices.find((v) => v.name === targetVoiceName);
+    if (explicitVoice) return explicitVoice;
+  }
 
-  // 2. Prefer standard OS English voices (Microsoft OneCore / SAPI / Apple / Android)
-  const osEnglishVoice = cachedSpeechVoices.find(
+  // 2. High-fidelity Natural / Neural online voices (Edge: Microsoft Aria / Jenny / Guy Natural)
+  const naturalVoice = cachedSpeechVoices.find(
     (voice) =>
       voice.lang &&
       voice.lang.toLowerCase().startsWith('en') &&
-      (voice.name.includes('Microsoft') || voice.name.includes('David') || voice.name.includes('Zira') || voice.name.includes('Samantha') || voice.name.includes('Alex'))
+      (voice.name.includes('Natural') || voice.name.includes('Neural'))
   );
-  if (osEnglishVoice) return osEnglishVoice;
+  if (naturalVoice) return naturalVoice;
 
-  // 3. Any standard US English voice
-  const usEnglishVoice = cachedSpeechVoices.find(
+  // 3. Google High-Clarity voices (Chrome: Google US English / Google UK English)
+  const googleVoice = cachedSpeechVoices.find(
+    (voice) =>
+      voice.lang &&
+      voice.lang.toLowerCase().startsWith('en') &&
+      voice.name.includes('Google')
+  );
+  if (googleVoice) return googleVoice;
+
+  // 4. Crisp, high-clarity OS voices with high acoustic projection (Zira, Samantha, Jenny, Aria, Karen, Victoria)
+  const loudOsVoice = cachedSpeechVoices.find(
+    (voice) =>
+      voice.lang &&
+      voice.lang.toLowerCase().startsWith('en') &&
+      (voice.name.includes('Zira') ||
+        voice.name.includes('Samantha') ||
+        voice.name.includes('Jenny') ||
+        voice.name.includes('Aria') ||
+        voice.name.includes('Karen') ||
+        voice.name.includes('Victoria'))
+  );
+  if (loudOsVoice) return loudOsVoice;
+
+  // 5. Standard US English voices (excluding David if another exists)
+  const standardUsVoice = cachedSpeechVoices.find(
+    (voice) =>
+      voice.lang &&
+      voice.lang.toLowerCase().replace('_', '-') === 'en-us' &&
+      !voice.name.includes('David')
+  );
+  if (standardUsVoice) return standardUsVoice;
+
+  // 6. Any standard US English voice
+  const anyUsVoice = cachedSpeechVoices.find(
     (voice) => voice.lang && voice.lang.toLowerCase().replace('_', '-') === 'en-us'
   );
-  if (usEnglishVoice) return usEnglishVoice;
+  if (anyUsVoice) return anyUsVoice;
 
-  // 4. Any English voice
+  // 7. Any English voice
   const anyEnglishVoice = cachedSpeechVoices.find(
     (voice) => voice.lang && voice.lang.toLowerCase().startsWith('en')
   );
@@ -90,15 +161,16 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 
   window.speechSynthesis.onvoiceschanged = () => {
     cachedSpeechVoices = window.speechSynthesis.getVoices() || [];
-    preferredSpeechVoice = getOrSelectPreferredVoice();
+    preferredSpeechVoice = getOrSelectPreferredVoice(activeSpeechConfig.preferredVoiceName);
   };
 }
 
 /**
  * Text-To-Speech Pronunciation using native Web Speech API with resilient queue & GC protection.
+ * Enforces maximum hardware volume (1.0 = 100%), acoustic formant projection, and optimal voice routing.
  */
-export function playPronunciation(word) {
-  if (!('speechSynthesis' in window) || !word) return;
+export function playPronunciation(word, customOverrides = null) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !word) return;
 
   if (speechQueueTimeoutId !== null) {
     clearTimeout(speechQueueTimeoutId);
@@ -116,14 +188,42 @@ export function playPronunciation(word) {
     console.warn('SpeechSynthesis cancel warning:', cancelError);
   }
 
+  const effectiveConfig = {
+    ...activeSpeechConfig,
+    ...(customOverrides || {}),
+  };
+
   // 40ms debounce buffer allows Chromium IPC audio channel to reset cleanly before speaking new text
   speechQueueTimeoutId = setTimeout(() => {
     try {
       const utterance = new SpeechSynthesisUtterance(word);
       utterance.lang = 'en-US';
-      utterance.rate = 0.95;
 
-      const voice = preferredSpeechVoice || getOrSelectPreferredVoice();
+      // Enforce 100% full scale volume output
+      utterance.volume =
+        typeof effectiveConfig.volume === 'number'
+          ? Math.max(0, Math.min(1.0, effectiveConfig.volume))
+          : 1.0;
+
+      // Clear articulation rate
+      utterance.rate =
+        typeof effectiveConfig.rate === 'number'
+          ? Math.max(0.5, Math.min(2.0, effectiveConfig.rate))
+          : 0.95;
+
+      // Formant pitch optimization for acoustic clarity
+      utterance.pitch =
+        typeof effectiveConfig.pitch === 'number'
+          ? Math.max(0.5, Math.min(2.0, effectiveConfig.pitch))
+          : 1.05;
+
+      const voice =
+        (effectiveConfig.preferredVoiceName
+          ? getOrSelectPreferredVoice(effectiveConfig.preferredVoiceName)
+          : null) ||
+        preferredSpeechVoice ||
+        getOrSelectPreferredVoice();
+
       if (voice) {
         utterance.voice = voice;
       }

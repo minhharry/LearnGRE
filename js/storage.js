@@ -39,6 +39,10 @@ export function createDefaultState() {
       study_mode: 'guided', // 'guided' | 'cram'
       theme: 'dark', // 'dark' | 'light' (VS Code palette)
       auto_audio: true, // Auto pronounce vocabulary on card/question transitions
+      audio_volume: 1.0, // Full hardware volume scale (0.0 - 1.0)
+      audio_rate: 0.95, // Academic articulation rate
+      audio_pitch: 1.05, // Formant projection boost for high intelligibility
+      preferred_voice_name: '', // Empty means auto-detect loudest, highest clarity voice
     },
     words: {},
     activity: {},
@@ -78,9 +82,27 @@ export function loadProgressData() {
         study_mode: 'guided',
         theme: 'dark',
         auto_audio: true,
+        audio_volume: 1.0,
+        audio_rate: 0.95,
+        audio_pitch: 1.05,
+        preferred_voice_name: '',
       };
-    } else if (data.ui_prefs.auto_audio === undefined) {
-      data.ui_prefs.auto_audio = true;
+    } else {
+      if (data.ui_prefs.auto_audio === undefined) {
+        data.ui_prefs.auto_audio = true;
+      }
+      if (data.ui_prefs.audio_volume === undefined) {
+        data.ui_prefs.audio_volume = 1.0;
+      }
+      if (data.ui_prefs.audio_rate === undefined) {
+        data.ui_prefs.audio_rate = 0.95;
+      }
+      if (data.ui_prefs.audio_pitch === undefined) {
+        data.ui_prefs.audio_pitch = 1.05;
+      }
+      if (data.ui_prefs.preferred_voice_name === undefined) {
+        data.ui_prefs.preferred_voice_name = '';
+      }
     }
 
     if (!data.activity || typeof data.activity !== 'object') {

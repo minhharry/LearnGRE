@@ -71,6 +71,16 @@
           </svg>
         </button>
 
+        <!-- Audio & Voice Settings Button -->
+        <button id="topbar-audio-settings-btn" class="icon-btn" title="Cài đặt Âm lượng & Giọng đọc"
+          aria-label="Cài đặt Âm lượng">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+
         <!-- Dark Mode Toggle Button (VS Code Theme) -->
         <button id="topbar-theme-btn" class="icon-btn" title="Chuyển chế độ Sáng / Tối (VS Code theme)"
           aria-label="Đổi giao diện">
@@ -188,6 +198,15 @@
               <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
             </svg>
             <span>Sao lưu & Khôi phục dữ liệu</span>
+          </button>
+          <button id="sidebar-audio-settings-btn" class="sidebar-footer-btn" title="Cài đặt Âm lượng & Giọng đọc"
+            aria-label="Cài đặt Âm lượng">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+            <span>Cài đặt Âm lượng & Giọng đọc</span>
           </button>
         </div>
       </aside>
@@ -376,8 +395,112 @@
     </div>
   </div>
 
+  <!-- Modal 3: Audio & Voice Settings Modal -->
+  <div id="audio-settings-modal" class="modal-overlay" role="dialog" aria-modal="true"
+    aria-labelledby="modal-audio-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-audio-title" class="modal-title">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
+          Cài đặt Âm lượng & Giọng đọc (Audio)
+        </h2>
+        <button class="modal-close-btn" aria-label="Đóng hộp thoại">
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13.5px; color: var(--text-body); margin-bottom: 16px;">
+          Tùy chỉnh âm lượng, tốc độ và chất giọng phát âm tiếng Anh chuẩn GRE. Hệ thống tự động ưu tiên giọng đọc rõ nét và âm lượng lớn nhất trên thiết bị.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Volume Setting -->
+          <div style="padding: 14px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--bg-secondary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label for="audio-volume-slider" style="font-weight: 700; color: var(--text-title); font-size: 13.5px;">
+                Mức âm lượng phát âm
+              </label>
+              <span id="audio-volume-val" style="font-size: 13px; font-weight: 700; color: var(--accent-color);">100% (Tối đa)</span>
+            </div>
+            <input type="range" id="audio-volume-slider" min="0.2" max="1.0" step="0.05" value="1.0" style="width: 100%; cursor: pointer;">
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+              Mức 100% khai thác tối đa công suất âm thanh đầu ra của Web Speech API.
+            </div>
+          </div>
+
+          <!-- Voice Selector -->
+          <div style="padding: 14px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--bg-secondary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label for="audio-voice-select" style="font-weight: 700; color: var(--text-title); font-size: 13.5px;">
+                Lựa chọn giọng đọc tiếng Anh
+              </label>
+            </div>
+            <select id="audio-voice-select" style="width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-title); font-size: 13px; outline: none;">
+              <option value="">Tự động chọn giọng to & rõ nhất (Khuyên dùng)</option>
+            </select>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">
+              Các giọng như Google US English, Microsoft Natural hoặc Zira cho âm lượng to và phát âm rõ hơn hẳn giọng mặc định cũ.
+            </div>
+          </div>
+
+          <!-- Speed & Pitch Sliders -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="padding: 14px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--bg-secondary);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label for="audio-rate-slider" style="font-weight: 700; color: var(--text-title); font-size: 13px;">
+                  Tốc độ đọc
+                </label>
+                <span id="audio-rate-val" style="font-size: 12px; font-weight: 600; color: var(--accent-color);">0.95x</span>
+              </div>
+              <input type="range" id="audio-rate-slider" min="0.7" max="1.2" step="0.05" value="0.95" style="width: 100%; cursor: pointer;">
+            </div>
+
+            <div style="padding: 14px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--bg-secondary);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label for="audio-pitch-slider" style="font-weight: 700; color: var(--text-title); font-size: 13px;">
+                  Độ trong / Cao độ
+                </label>
+                <span id="audio-pitch-val" style="font-size: 12px; font-weight: 600; color: var(--accent-color);">1.05x</span>
+              </div>
+              <input type="range" id="audio-pitch-slider" min="0.8" max="1.3" step="0.05" value="1.05" style="width: 100%; cursor: pointer;">
+            </div>
+          </div>
+
+          <!-- Test Audio Button & Auto Checkbox -->
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: var(--radius-md); background-color: var(--bg-secondary); flex-wrap: wrap; gap: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-title); cursor: pointer; user-select: none;">
+              <input type="checkbox" id="modal-auto-audio-toggle" style="cursor: pointer; width: 16px; height: 16px;">
+              Tự động phát âm khi lật thẻ / hiển thị câu
+            </label>
+            <button id="btn-test-audio" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 14px;">
+              <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+              <span>Nghe thử âm lượng</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11.5px; color: var(--text-muted);">
+          Mẹo: Nếu vẫn nhỏ, kiểm tra nút Volume của Windows hoặc thanh loa màn hình.
+        </span>
+        <button class="btn-secondary modal-close-btn" style="min-width: 80px;">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main JavaScript Module Entry Point -->
-  <script type="module" src="js/app.js?v=4.2"></script>
+  <script type="module" src="js/app.js?v=4.3"></script>
 
   <!-- Service Worker Registration for Offline Caching -->
   <script>
