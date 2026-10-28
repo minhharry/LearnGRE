@@ -133,8 +133,8 @@ body.in-session .split-handle {
 }
 
 .streak-chip.streak-active {
-  background-color: #fff7ed;
-  border-color: #fed7aa;
+  background-color: var(--accent-light);
+  border-color: var(--accent-border);
   color: var(--streak-color);
 }
 
@@ -356,16 +356,18 @@ body.in-session .split-handle {
   line-height: 1.4;
 }
 
-.nav-badge-amber {
-  background: rgba(245, 158, 11, 0.16);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+.nav-badge-amber,
+.nav-badge-blue {
+  background: var(--accent-light);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-border);
 }
 
-[data-theme="dark"] .nav-badge-amber {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-  border-color: rgba(245, 158, 11, 0.4);
+[data-theme="dark"] .nav-badge-amber,
+[data-theme="dark"] .nav-badge-blue {
+  background: #132238;
+  color: #60a5fa;
+  border-color: #2563eb;
 }
 
 .nav-badge-rose {

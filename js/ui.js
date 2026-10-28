@@ -346,7 +346,7 @@ export function renderAudioButton(autoAudio) {
 export function renderThemeButton(theme) {
   const isDark = theme === 'dark';
   const iconHtml = isDark ? ICONS.sun : ICONS.moon;
-  const tooltip = isDark ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối (VS Code theme)';
+  const tooltip = isDark ? 'Chuyển sang giao diện Sáng (Xanh Trắng)' : 'Chuyển sang giao diện Tối (Xanh Đen)';
 
   const topbarBtn = document.getElementById('topbar-theme-btn');
   if (topbarBtn) {
@@ -420,7 +420,7 @@ export function renderSidebarGroups({
         </div>
         <div class="group-progress-track">
           <div class="group-progress-fill" style="width: ${masteryPercent}%; background-color: ${
-      masteryPercent >= 85 ? 'var(--success-border)' : 'var(--accent-color)'
+      masteryPercent >= 85 ? 'var(--accent-hover)' : 'var(--accent-color)'
     };"></div>
         </div>
         <div class="group-item-meta">
@@ -865,7 +865,7 @@ export function renderOverviewDashboard({
         <div class="kpi-card">
           <div class="kpi-header">
             <span class="kpi-label">Chuỗi Streak</span>
-            <span class="kpi-badge kpi-badge-orange">${streak} ngày</span>
+            <span class="kpi-badge kpi-badge-blue">${streak} ngày</span>
           </div>
           <div class="kpi-value-row">
             <span class="kpi-value" style="color: var(--streak-color);">${streak}</span>
@@ -1560,22 +1560,14 @@ export function renderErrorNotebook({ vocabList, storageData, onStartErrorSessio
 }
 
 /**
- * Applies dynamic accent color transition to orange (#f97316) when streak >= 5 per SPEC 2.1.
+ * Dynamic accent color: preserved in monochrome blue palette.
  */
 export function applyStreakAccent(streak) {
-  const isHigh = streak >= 5;
-  document.documentElement.classList.toggle('streak-high', isHigh);
-  if (isHigh) {
-    document.documentElement.style.setProperty('--accent-color', '#f97316');
-    document.documentElement.style.setProperty('--accent-hover', '#ea580c');
-    document.documentElement.style.setProperty('--accent-light', '#fff7ed');
-    document.documentElement.style.setProperty('--accent-border', '#fed7aa');
-  } else {
-    document.documentElement.style.removeProperty('--accent-color');
-    document.documentElement.style.removeProperty('--accent-hover');
-    document.documentElement.style.removeProperty('--accent-light');
-    document.documentElement.style.removeProperty('--accent-border');
-  }
+  document.documentElement.classList.remove('streak-high');
+  document.documentElement.style.removeProperty('--accent-color');
+  document.documentElement.style.removeProperty('--accent-hover');
+  document.documentElement.style.removeProperty('--accent-light');
+  document.documentElement.style.removeProperty('--accent-border');
 }
 
 /**
@@ -1608,8 +1600,8 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
   progressHeader.innerHTML = `
     <div class="session-progress-left">
       <button id="session-home-btn" class="session-home-btn brand-logo-icon" title="Về Danh sách Groups (Trang chủ)" aria-label="Về Danh sách Groups (Trang chủ)">G</button>
-      ${isAllDue ? '<span class="badge badge-yellow" style="font-size: 11px; font-weight: 700;">Tổng ôn tới hạn</span>' : ''}
-      ${isRedemption ? '<span class="badge badge-amber" style="font-size: 10.5px;">Gỡ lỗi</span>' : ''}
+      ${isAllDue ? '<span class="badge badge-blue" style="font-size: 11px; font-weight: 700;">Tổng ôn tới hạn</span>' : ''}
+      ${isRedemption ? '<span class="badge badge-blue" style="font-size: 10.5px;">Gỡ lỗi</span>' : ''}
       <span class="session-counter-text">Câu ${current}/${total}</span>
     </div>
     <div class="session-progress-track">

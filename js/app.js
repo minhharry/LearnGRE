@@ -66,7 +66,7 @@ class AppController {
     this.bindSplitResizer();
     this.applySidebarWidth();
 
-    // Apply stored theme (default to dark theme modeled after VS Code)
+    // Apply stored theme (default to dark theme: monochrome xanh đen)
     const initialTheme = this.storageData.ui_prefs.theme || 'dark';
     this.applyTheme(initialTheme);
 
@@ -680,7 +680,7 @@ class AppController {
       this.toggleAudioPreference();
     });
 
-    // Theme Toggle Button (VS Code Dark / Light)
+    // Theme Toggle Button (Monochrome Xanh Trắng / Xanh Đen)
     document.getElementById('topbar-theme-btn')?.addEventListener('click', () => {
       this.toggleTheme();
     });

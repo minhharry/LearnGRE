@@ -4,49 +4,50 @@
    ========================================================================== */
 
 :root {
-  /* Color Palette */
+  /* Color Palette - Light Mode: Monochrome Xanh - Trắng */
   --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
+  --bg-secondary: #f0f4f9;
+  --bg-tertiary: #f7f9fc;
   --bg-elevated: #ffffff;
+  --bg-hover: #e8f0fe;
 
-  --border-color: #e5e7eb;
-  --border-subtle: #f1f5f9;
-  --border-hover: #cbd5e1;
-  --border-focus: #3b82f6;
+  --border-color: #dbe4ef;
+  --border-subtle: #edf2f7;
+  --border-hover: #b3c9e2;
+  --border-focus: #2563eb;
 
-  --text-title: #0f172a;
-  --text-body: #1e293b;
-  --text-muted: #64748b;
-  --text-light: #94a3b8;
+  --text-title: #0c1e38;
+  --text-body: #1e2f47;
+  --text-muted: #5a718d;
+  --text-light: #8ca2ba;
 
   /* State Colors */
-  --success-bg: #ecfdf5;
-  --success-border: #10b981;
-  --success-text: #065f46;
+  --success-bg: #eff6ff;
+  --success-border: #3b82f6;
+  --success-text: #1d4ed8;
 
   --error-bg: #fef2f2;
   --error-border: #ef4444;
   --error-text: #991b1b;
 
-  --warning-bg: #fffbeb;
-  --warning-border: #f59e0b;
-  --warning-text: #92400e;
+  --warning-bg: #eff6ff;
+  --warning-border: #93c5fd;
+  --warning-text: #1d4ed8;
 
-  /* Dynamic Accent Color (Default Blue, transitions to Orange on Streak >= 5) */
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
+  /* Monochrome Blue Accent */
+  --accent-color: #2563eb;
+  --accent-hover: #1d4ed8;
   --accent-light: #eff6ff;
   --accent-border: #bfdbfe;
 
-  --streak-color: #f97316;
+  --streak-color: #2563eb;
 
-  /* Level Colors */
+  /* Level Colors in Blue Monochrome */
   --level-0: #94a3b8;
-  --level-1: #ef4444;
-  --level-2: #f59e0b;
-  --level-3: #3b82f6;
-  --level-4: #10b981;
+  --level-1: #93c5fd;
+  --level-2: #60a5fa;
+  --level-3: #2563eb;
+  --level-4: #1d4ed8;
 
   /* Timing & Animations */
   --transition-fast: 120ms ease-out;
@@ -64,30 +65,15 @@
   --radius-lg: 14px;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  /* Shadows - Light Blue Tint */
+  --shadow-xs: 0 1px 2px rgba(12, 30, 56, 0.05);
+  --shadow-sm: 0 1px 3px rgba(12, 30, 56, 0.08), 0 1px 2px rgba(12, 30, 56, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(12, 30, 56, 0.08), 0 2px 4px -2px rgba(12, 30, 56, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(12, 30, 56, 0.08), 0 4px 6px -4px rgba(12, 30, 56, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(12, 30, 56, 0.1), 0 8px 10px -6px rgba(12, 30, 56, 0.04);
 }
 
-/* Dynamic Accent Color for High Streak (Streak >= 5) per SPEC 2.1 */
-:root.streak-high,
-html.streak-high {
-  --accent-color: #f97316;
-  --accent-hover: #ea580c;
-  --accent-light: #fff7ed;
-  --accent-border: #fed7aa;
-}
-
-[data-theme="dark"].streak-high,
-html[data-theme="dark"].streak-high {
-  --accent-color: #f97316;
-  --accent-hover: #ea580c;
-  --accent-light: rgba(249, 115, 22, 0.18);
-  --accent-border: #ea580c;
-}
+/* Streak accent preserved in pure monochrome blue */
 
 
 /* CSS Reset */
@@ -187,9 +173,9 @@ a {
 }
 
 .badge-yellow {
-  background-color: var(--warning-bg);
-  color: var(--warning-text);
-  border: 1px solid #fde68a;
+  background-color: var(--accent-light);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-border);
 }
 
 .badge-red {
@@ -311,176 +297,174 @@ a {
 }
 
 /* ==========================================================================
-   VS Code Dark Theme (Theme: dark)
-   Color Palette modeled directly after VS Code Dark+ / Modern Dark
+   Dark Theme: Monochrome Xanh - Đen (Blue-Black Palette)
    ========================================================================== */
 [data-theme="dark"] {
-  /* VS Code Dark Surfaces */
-  --bg-primary: #1e1e1e;
-  /* VS Code Editor Background */
-  --bg-secondary: #181818;
-  /* VS Code Activity Bar / Deep Window Background */
-  --bg-tertiary: #252526;
-  /* VS Code Sidebar Background */
-  --bg-elevated: #2d2d2d;
-  /* VS Code Dropdown / Floating Card */
+  /* Surfaces - Deep Midnight Blue-Black */
+  --bg-primary: #0d1522;
+  --bg-secondary: #080d16;
+  --bg-tertiary: #131e30;
+  --bg-elevated: #1a263c;
+  --bg-hover: #1e2d47;
 
-  --border-color: #333333;
-  /* VS Code Panel Border */
-  --border-subtle: #282828;
-  --border-hover: #454545;
-  --border-focus: #007acc;
+  --border-color: #1c2a42;
+  --border-subtle: #121a28;
+  --border-hover: #2b3e60;
+  --border-focus: #3b82f6;
 
-  --text-title: #ffffff;
-  --text-body: #cccccc;
-  /* VS Code Standard Text */
-  --text-muted: #858585;
-  /* VS Code Dimmed Text */
-  --text-light: #5a5a5a;
+  --text-title: #f8fafc;
+  --text-body: #cbd5e1;
+  --text-muted: #7e92ab;
+  --text-light: #50637d;
 
-  /* VS Code Git / Status Colors */
-  --success-bg: #142e1b;
-  --success-border: #2ea043;
-  --success-text: #89d185;
+  /* State Colors */
+  --success-bg: rgba(37, 99, 235, 0.16);
+  --success-border: #3b82f6;
+  --success-text: #93c5fd;
 
-  --error-bg: #321616;
-  --error-border: #da3633;
-  --error-text: #f48771;
+  --error-bg: rgba(239, 68, 68, 0.15);
+  --error-border: #ef4444;
+  --error-text: #fca5a5;
 
-  --warning-bg: #302613;
-  --warning-border: #9e6a03;
-  --warning-text: #e3b341;
+  --warning-bg: #132238;
+  --warning-border: #2563eb;
+  --warning-text: #60a5fa;
 
-  /* VS Code Accent Blue */
-  --accent-color: #007acc;
-  --accent-hover: #0e639c;
-  --accent-light: #162a3f;
-  --accent-border: #04395e;
+  /* Monochrome Blue Accent */
+  --accent-color: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-light: #132238;
+  --accent-border: #2563eb;
 
-  --streak-color: #f0883e;
+  --streak-color: #60a5fa;
 
-  /* Level Colors in VS Code Dark */
-  --level-0: #6e7681;
-  --level-1: #f48771;
-  --level-2: #e3b341;
-  --level-3: #58a6ff;
-  --level-4: #3fb950;
+  /* Level Colors in Blue Monochrome */
+  --level-0: #475569;
+  --level-1: #1e3a8a;
+  --level-2: #2563eb;
+  --level-3: #3b82f6;
+  --level-4: #60a5fa;
 
-  /* Dark Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  /* Dark Shadows with blue-black ambient tint */
+  --shadow-xs: 0 1px 2px rgba(2, 6, 23, 0.5);
+  --shadow-sm: 0 1px 3px rgba(2, 6, 23, 0.6), 0 1px 2px rgba(2, 6, 23, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(2, 6, 23, 0.6), 0 2px 4px -2px rgba(2, 6, 23, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(2, 6, 23, 0.7), 0 4px 6px -4px rgba(2, 6, 23, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(2, 6, 23, 0.8), 0 8px 10px -6px rgba(2, 6, 23, 0.6);
 }
 
 [data-theme="dark"] .keycap {
-  background-color: var(--accent-color);
-  border: 1px solid #1f6feb;
-  border-bottom: 2px solid #1158c7;
+  background-color: #2563eb;
+  border: 1px solid #3b82f6;
+  border-bottom: 2px solid #1d4ed8;
   color: #ffffff;
 }
 
 [data-theme="dark"] .keycap.active,
 [data-theme="dark"] .keycap-pressed {
-  background-color: var(--accent-hover);
+  background-color: #1d4ed8;
   color: #ffffff;
 }
 
 [data-theme="dark"] .streak-chip {
-  background-color: #252526;
-  border-color: #333333;
-  color: #858585;
+  background-color: #131e30;
+  border-color: #1c2a42;
+  color: #7e92ab;
 }
 
 [data-theme="dark"] .streak-chip.streak-active {
-  background-color: #301f11;
-  border-color: #7c4115;
-  color: #f0883e;
+  background-color: #132238;
+  border-color: #2563eb;
+  color: #60a5fa;
 }
 
 [data-theme="dark"] .mode-switcher {
-  background-color: #181818;
-  border-color: #333333;
+  background-color: #080d16;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .mode-btn.active {
-  background-color: #252526;
-  color: #ffffff;
+  background-color: #1a263c;
+  color: #f8fafc;
 }
 
 [data-theme="dark"] .brand-tag {
-  background-color: #252526;
-  color: #858585;
+  background-color: #131e30;
+  color: #7e92ab;
 }
 
 [data-theme="dark"] .sidebar-search-input {
-  background-color: #252526;
-  border-color: #333333;
-  color: #cccccc;
+  background-color: #0d1522;
+  border-color: #1c2a42;
+  color: #cbd5e1;
 }
 
 [data-theme="dark"] .sidebar-search-input:focus {
-  background-color: #1e1e1e;
-  border-color: #007acc;
+  background-color: #0d1522;
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .sidebar-nav-item:hover {
-  background-color: #252526;
+  background-color: #1a263c;
+  color: #f8fafc;
 }
 
 [data-theme="dark"] .sidebar-nav-item.active {
-  background-color: #162a3f;
-  color: #58a6ff;
+  background-color: #132238;
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .sidebar-nav-item.active::before {
+  background-color: #3b82f6;
 }
 
 [data-theme="dark"] .group-item-card:hover {
-  background-color: #2a2d2e;
-  border-color: #454545;
+  background-color: #1a263c;
+  border-color: #2b3e60;
 }
 
 [data-theme="dark"] .group-item-card.active {
-  background-color: #1f2428;
-  border-color: #007acc;
-  box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.35);
+  background-color: #132238;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
 }
 
 [data-theme="dark"] .group-progress-track {
-  background-color: #141414;
-  border-color: #383838;
+  background-color: #080d16;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .progress-segment {
-  background-color: #333333;
+  background-color: #1c2a42;
 }
 
 [data-theme="dark"] .progress-segment.active {
-  background-color: #58a6ff;
+  background-color: #3b82f6;
 }
 
 [data-theme="dark"] .option-card {
-  background-color: #252526;
-  border-color: #333333;
+  background-color: #131e30;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .option-card:hover:not(.locked) {
-  background-color: #2a2d2e;
-  border-color: #007acc;
+  background-color: #1a263c;
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .speed-match-card {
-  background-color: #252526;
-  border-color: #333333;
+  background-color: #131e30;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .speed-match-card:hover:not(.matched):not(.locked) {
-  background-color: #2a2d2e;
-  border-color: #007acc;
+  background-color: #1a263c;
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .speed-match-card.selected {
-  background-color: #162a3f;
-  border-color: #007acc;
+  background-color: #132238;
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .speed-match-card.correct-flash {
@@ -500,70 +484,82 @@ a {
 }
 
 [data-theme="dark"] .speed-match-card.matched {
-  background-color: #181818;
-  border-color: #252526;
-  opacity: 0.15;
+  background-color: #080d16;
+  border-color: #131e30;
+  opacity: 0.2;
 }
 
 [data-theme="dark"] .word-table tr:hover td {
-  background-color: #252526;
+  background-color: #131e30;
 }
 
 [data-theme="dark"] .level-pill-0 {
-  background-color: #21262d;
-  color: #8b949e;
+  background-color: #131e30;
+  color: #7e92ab;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .level-pill-1 {
-  background-color: #321616;
-  color: #f48771;
+  background-color: #10203d;
+  color: #93c5fd;
+  border-color: #1e3a8a;
 }
 
 [data-theme="dark"] .level-pill-2 {
-  background-color: #302613;
-  color: #e3b341;
+  background-color: #142b54;
+  color: #bfdbfe;
+  border-color: #2563eb;
 }
 
 [data-theme="dark"] .level-pill-3 {
-  background-color: #162a3f;
-  color: #58a6ff;
+  background-color: #193970;
+  color: #dbeafe;
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .level-pill-4 {
-  background-color: #142e1b;
-  color: #3fb950;
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #60a5fa;
 }
 
 [data-theme="dark"] .badge-muted {
-  background-color: #252526;
-  color: #858585;
-  border-color: #333333;
+  background-color: #131e30;
+  color: #7e92ab;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .badge-blue {
-  background-color: #162a3f;
-  color: #58a6ff;
-  border-color: #04395e;
+  background-color: #132238;
+  color: #60a5fa;
+  border-color: #2563eb;
+}
+
+[data-theme="dark"] .badge-yellow {
+  background-color: #132238;
+  color: #60a5fa;
+  border-color: #2563eb;
 }
 
 [data-theme="dark"] .btn-secondary {
-  background-color: #252526;
-  border-color: #333333;
-  color: #cccccc;
+  background-color: #131e30;
+  border-color: #1c2a42;
+  color: #cbd5e1;
 }
 
 [data-theme="dark"] .btn-secondary:hover {
-  background-color: #2d2d2d;
-  border-color: #007acc;
+  background-color: #1a263c;
+  border-color: #3b82f6;
   color: #ffffff;
 }
 
 [data-theme="dark"] .btn-primary {
-  background-color: #007acc;
+  background-color: #2563eb;
   color: #ffffff;
-  border-color: #007acc;
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .btn-primary:hover {
-  background-color: #0e639c;
+  background-color: #1d4ed8;
+  border-color: #60a5fa;
 }

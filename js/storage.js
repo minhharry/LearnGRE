@@ -37,7 +37,7 @@ export function createDefaultState() {
     ui_prefs: {
       sidebar_width: 320,
       study_mode: 'guided', // 'guided' | 'cram'
-      theme: 'dark', // 'dark' | 'light' (VS Code palette)
+      theme: 'dark', // 'dark' (xanh đen) | 'light' (xanh trắng)
       auto_audio: true, // Auto pronounce vocabulary on card/question transitions
       audio_volume: 1.0, // Full hardware volume scale (0.0 - 1.0)
       audio_rate: 0.95, // Academic articulation rate

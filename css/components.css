@@ -452,10 +452,10 @@
 }
 
 .speed-match-card.matched .keycap {
-  background: #333333 !important;
-  border-color: #444444 !important;
+  background: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
   border-bottom-width: 1px !important;
-  color: #888888 !important;
+  color: var(--text-muted) !important;
   box-shadow: none !important;
   opacity: 0.3;
 }
@@ -629,131 +629,131 @@
   gap: 12px;
 }
 
-/* Dark Mode Overrides for Components */
+/* Dark Mode Overrides for Components - Monochrome Xanh Đen */
 [data-theme="dark"] .rationale-clue-box {
-  background-color: #252526;
+  background-color: #131e30;
 }
 
 [data-theme="dark"] .vocab-lookup-item {
-  background-color: #252526;
+  background-color: #131e30;
 }
 
 [data-theme="dark"] .vocab-lookup-item.highlight-correct {
-  background-color: #142e1b;
-  border-color: #2ea043;
+  background-color: rgba(37, 99, 235, 0.2);
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .vocab-lookup-item.highlight-incorrect {
-  background-color: #321616;
-  border-color: #da3633;
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
 }
 
 [data-theme="dark"] .tc-blank {
-  background-color: #162a3f;
-  color: #58a6ff;
-  border-bottom-color: #007acc;
+  background-color: #132238;
+  color: #60a5fa;
+  border-bottom-color: #3b82f6;
 }
 
 [data-theme="dark"] .tc-blank.filled-correct {
-  background-color: #142e1b;
-  border-bottom-color: #2ea043;
-  color: #89d185;
+  background-color: rgba(37, 99, 235, 0.2);
+  border-bottom-color: #3b82f6;
+  color: #93c5fd;
 }
 
 [data-theme="dark"] .tc-blank.filled-incorrect {
-  background-color: #321616;
-  border-bottom-color: #da3633;
-  color: #f48771;
+  background-color: rgba(239, 68, 68, 0.2);
+  border-bottom-color: #ef4444;
+  color: #fca5a5;
 }
 
 [data-theme="dark"] .flash-pos-pill,
 [data-theme="dark"] .question-domain-tag,
 [data-theme="dark"] .session-type-badge {
-  background-color: #252526;
-  color: #858585;
+  background-color: #131e30;
+  color: #7e92ab;
 }
 
 [data-theme="dark"] .stat-card {
-  background-color: #252526;
-  border-color: #333333;
+  background-color: #131e30;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .dashboard-widget-card {
-  background-color: #1e1e1e;
-  border-color: #333333;
+  background-color: #0d1522;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .dashboard-widget-card:hover {
-  border-color: #454545;
+  border-color: #3b82f6;
 }
 
 [data-theme="dark"] .widget-badge.badge-idle {
-  background-color: #252526;
-  border-color: #333333;
-  color: #858585;
+  background-color: #131e30;
+  border-color: #1c2a42;
+  color: #7e92ab;
 }
 
 [data-theme="dark"] .widget-badge.badge-countdown {
-  background-color: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.35);
-  color: #58a6ff;
+  background-color: #132238;
+  border-color: #2563eb;
+  color: #60a5fa;
 }
 
 [data-theme="dark"] .widget-badge.badge-due-pulse {
-  background-color: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #3fb950;
+  background-color: #132238;
+  border-color: #2563eb;
+  color: #60a5fa;
 }
 
 [data-theme="dark"] .widget-badge.badge-active {
-  background-color: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.35);
-  color: #58a6ff;
+  background-color: #132238;
+  border-color: #2563eb;
+  color: #60a5fa;
 }
 
 [data-theme="dark"] .widget-badge.badge-success {
   background-color: rgba(16, 185, 129, 0.15);
   border-color: rgba(16, 185, 129, 0.4);
-  color: #3fb950;
+  color: #34d399;
 }
 
 [data-theme="dark"] .modal-card {
-  background-color: #1e1e1e;
-  border-color: #333333;
+  background-color: #0d1522;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .modal-header,
 [data-theme="dark"] .modal-footer {
-  background-color: #181818;
-  border-color: #333333;
+  background-color: #080d16;
+  border-color: #1c2a42;
 }
 
 [data-theme="dark"] .word-table th {
-  background-color: #252526;
-  border-color: #333333;
-  color: #858585;
+  background-color: #131e30;
+  border-color: #1c2a42;
+  color: #7e92ab;
 }
 
 [data-theme="dark"] .word-table td {
-  border-color: #282828;
+  border-color: #121a28;
 }
 
 [data-theme="dark"] .action-chip-btn {
-  background-color: #252526;
-  border-color: #333333;
-  color: #cccccc;
+  background-color: #131e30;
+  border-color: #1c2a42;
+  color: #cbd5e1;
 }
 
 [data-theme="dark"] .action-chip-btn:hover {
-  background-color: #2d2d2d;
-  border-color: #454545;
+  background-color: #1a263c;
+  border-color: #3b82f6;
   color: #ffffff;
 }
 
 [data-theme="dark"] .action-chip-btn.flagged {
-  background-color: #321616;
-  border-color: #8b2626;
-  color: #f48771;
+  background-color: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  color: #fca5a5;
 }
 
 /* ==========================================================================
@@ -810,14 +810,14 @@
 }
 
 .btn-secondary:hover {
-  background-color: #162a3f;
+  background-color: var(--accent-light);
   border-color: var(--accent-color);
-  color: #58a6ff;
+  color: var(--accent-color);
 }
 
 .btn-secondary:active {
-  background-color: #0e639c;
-  color: #ffffff;
+  background-color: var(--accent-light);
+  color: var(--accent-hover);
 }
 
 /* Button: Tổng ôn tới hạn (All Due Review) */
@@ -847,20 +847,26 @@
 }
 
 .btn-due-review.has-due {
-  background-color: #162a3f;
-  border-color: #007acc;
-  color: #58a6ff;
-}
-
-[data-theme="dark"] .btn-due-review.has-due {
-  background-color: #162a3f;
-  border-color: #007acc;
-  color: #58a6ff;
+  background-color: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 
 .btn-due-review.has-due:hover {
-  background-color: #007acc;
-  border-color: #007acc;
+  background-color: #dbeafe;
+  border-color: #2563eb;
+  color: #1e40af;
+}
+
+[data-theme="dark"] .btn-due-review.has-due {
+  background-color: #132238;
+  border-color: #2563eb;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .btn-due-review.has-due:hover {
+  background-color: #1a2c4e;
+  border-color: #3b82f6;
   color: #ffffff;
 }
 
@@ -880,18 +886,23 @@
 }
 
 .btn-due-review.has-due .due-badge-pill {
-  background-color: #007acc;
+  background-color: #2563eb;
   color: #ffffff;
 }
 
 [data-theme="dark"] .btn-due-review.has-due .due-badge-pill {
-  background-color: #007acc;
+  background-color: #3b82f6;
   color: #ffffff;
 }
 
 .btn-due-review.has-due:hover .due-badge-pill {
-  background-color: #ffffff;
-  color: #007acc;
+  background-color: #1d4ed8;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .btn-due-review.has-due:hover .due-badge-pill {
+  background-color: #2563eb;
+  color: #ffffff;
 }
 
 /* Button inside Next Review widget CTA */
@@ -910,7 +921,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--accent-color);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .btn-widget-cta:hover {
@@ -920,6 +931,17 @@
 
 .btn-widget-cta:active {
   background-color: var(--accent-hover);
+}
+
+[data-theme="dark"] .btn-widget-cta {
+  background-color: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .btn-widget-cta:hover {
+  background-color: #1d4ed8;
+  border-color: #60a5fa;
 }
 
 /* Toast Notification Component */
@@ -1135,7 +1157,7 @@
 }
 
 .dashboard-widget-card:hover {
-  border-color: #007acc;
+  border-color: var(--accent-color);
 }
 
 .widget-header {
@@ -1182,9 +1204,9 @@
 .widget-badge.badge-due,
 .widget-badge.badge-due-pulse,
 .widget-badge.badge-active {
-  background-color: #162a3f;
-  color: #58a6ff;
-  border: 1px solid #007acc;
+  background-color: var(--accent-light);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-border);
 }
 
 .widget-badge.badge-success {
@@ -1207,7 +1229,7 @@
 
 .widget-metric-val.text-accent,
 .widget-metric-val.text-warning {
-  color: #58a6ff;
+  color: var(--accent-color);
 }
 
 .widget-metric-val.text-success {
@@ -1257,8 +1279,8 @@
 }
 
 .session-step-dot.completed {
-  background-color: #007acc;
-  border-color: #007acc;
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
   color: #ffffff;
 }
 
@@ -1269,7 +1291,7 @@
 }
 
 .session-step-line.completed {
-  background-color: #007acc;
+  background-color: var(--accent-color);
 }
 
 .widget-info-row {
@@ -1411,64 +1433,64 @@
   display: inline-block;
 }
 
-/* Light Mode Level Colors */
+/* Light Mode Level Colors - Monochrome Xanh Trắng */
 .level-pill-0 { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 .level-pill-0 .level-dot { background-color: #64748b; }
 
-.level-pill-1 { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-.level-pill-1 .level-dot { background-color: #ef4444; }
+.level-pill-1 { background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.level-pill-1 .level-dot { background-color: #3b82f6; }
 
-.level-pill-2 { background-color: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-.level-pill-2 .level-dot { background-color: #f59e0b; }
+.level-pill-2 { background-color: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.level-pill-2 .level-dot { background-color: #2563eb; }
 
-.level-pill-3 { background-color: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; }
-.level-pill-3 .level-dot { background-color: #0284c7; }
+.level-pill-3 { background-color: #bfdbfe; color: #1e40af; border: 1px solid #60a5fa; }
+.level-pill-3 .level-dot { background-color: #1d4ed8; }
 
-.level-pill-4 { background-color: #d1fae5; color: #047857; border: 1px solid #6ee7b7; }
-.level-pill-4 .level-dot { background-color: #10b981; }
+.level-pill-4 { background-color: #2563eb; color: #ffffff; border: 1px solid #1d4ed8; }
+.level-pill-4 .level-dot { background-color: #ffffff; }
 
-/* Dark Mode Level Overrides */
+/* Dark Mode Level Overrides - Monochrome Xanh Đen */
 [data-theme="dark"] .level-pill-0 {
-  background-color: #21262d;
-  border: 1px solid #30363d;
-  color: #8b949e;
+  background-color: #131e30;
+  border: 1px solid #1c2a42;
+  color: #7e92ab;
 }
-[data-theme="dark"] .level-pill-0 .level-dot { background-color: #6e7681; }
+[data-theme="dark"] .level-pill-0 .level-dot { background-color: #50637d; }
 
 [data-theme="dark"] .level-pill-1 {
-  background-color: #321616;
-  border: 1px solid #da3633;
-  color: #f48771;
+  background-color: #10203d;
+  border: 1px solid #1e3a8a;
+  color: #93c5fd;
 }
 [data-theme="dark"] .level-pill-1 .level-dot {
-  background-color: #da3633;
+  background-color: #2563eb;
 }
 
 [data-theme="dark"] .level-pill-2 {
-  background-color: #302613;
-  border: 1px solid #9e6a03;
-  color: #e3b341;
+  background-color: #142b54;
+  border: 1px solid #2563eb;
+  color: #bfdbfe;
 }
 [data-theme="dark"] .level-pill-2 .level-dot {
-  background-color: #9e6a03;
+  background-color: #3b82f6;
 }
 
 [data-theme="dark"] .level-pill-3 {
-  background-color: #162a3f;
-  border: 1px solid #007acc;
-  color: #58a6ff;
+  background-color: #193970;
+  border: 1px solid #3b82f6;
+  color: #dbeafe;
 }
 [data-theme="dark"] .level-pill-3 .level-dot {
-  background-color: #007acc;
+  background-color: #60a5fa;
 }
 
 [data-theme="dark"] .level-pill-4 {
-  background-color: #142e1b;
-  border: 1px solid #2ea043;
-  color: #89d185;
+  background-color: #2563eb;
+  border: 1px solid #60a5fa;
+  color: #ffffff;
 }
 [data-theme="dark"] .level-pill-4 .level-dot {
-  background-color: #2ea043;
+  background-color: #ffffff;
 }
 
 /* Action Chip Button (Ghim / Bookmark) */
@@ -1682,9 +1704,9 @@
 }
 
 .kpi-badge-orange {
-  background-color: #fff7ed;
-  color: #ea580c;
-  border: 1px solid #fed7aa;
+  background-color: var(--accent-light);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-border);
 }
 
 .kpi-badge-red {
@@ -1706,9 +1728,9 @@
 }
 
 [data-theme="dark"] .kpi-badge-orange {
-  background-color: rgba(249, 115, 22, 0.16);
-  color: #fb923c;
-  border-color: rgba(249, 115, 22, 0.3);
+  background-color: #132238;
+  color: #60a5fa;
+  border-color: #2563eb;
 }
 
 [data-theme="dark"] .kpi-badge-red {
@@ -2296,8 +2318,8 @@
 }
 
 [data-theme="dark"] .flashcard-main-card {
-  background-color: #1e1e1e;
-  border-color: #333333;
+  background-color: #0d1522;
+  border-color: #1c2a42;
 }
 
 .flashcard-word-header {
@@ -2326,7 +2348,7 @@
 }
 
 [data-theme="dark"] .flashcard-word-text {
-  color: #ffffff;
+  color: #f8fafc;
 }
 
 .flashcard-audio-fab {
@@ -2360,8 +2382,8 @@
 }
 
 [data-theme="dark"] .flashcard-vi-box {
-  background: linear-gradient(135deg, rgba(0, 122, 204, 0.16) 0%, rgba(88, 166, 255, 0.1) 100%);
-  border-left-color: #007acc;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.16) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-left-color: #3b82f6;
 }
 
 .flashcard-vi-text {
@@ -2372,7 +2394,7 @@
 }
 
 [data-theme="dark"] .flashcard-vi-text {
-  color: #58a6ff;
+  color: #93c5fd;
 }
 
 .flashcard-section {
@@ -2404,7 +2426,7 @@
 }
 
 [data-theme="dark"] .flashcard-en-list {
-  color: #cccccc;
+  color: #cbd5e1;
 }
 
 .flashcard-en-list li {
@@ -2420,8 +2442,8 @@
 }
 
 [data-theme="dark"] .flashcard-example-section {
-  background-color: #252526;
-  border-color: #333333;
+  background-color: #131e30;
+  border-color: #1c2a42;
 }
 
 .domain-pill {
@@ -2457,8 +2479,8 @@
 }
 
 [data-theme="dark"] .highlight-target-word {
-  color: #58a6ff;
-  text-decoration-color: #04395e;
+  color: #60a5fa;
+  text-decoration-color: #2563eb;
 }
 
 .flashcard-sentence-trans {
@@ -2511,9 +2533,9 @@
 }
 
 [data-theme="dark"] .tag-syn {
-  background: #2d2d2d;
-  color: #cccccc;
-  border-color: #3e3e42;
+  background: #1a263c;
+  color: #cbd5e1;
+  border-color: #2b3e60;
 }
 
 .tag-ant {
@@ -2552,9 +2574,9 @@
 }
 
 [data-theme="dark"] .form-pill {
-  background-color: #252526;
-  border-color: #333333;
-  color: #cccccc;
+  background-color: #131e30;
+  border-color: #1c2a42;
+  color: #cbd5e1;
 }
 
 .form-pos {
@@ -2586,9 +2608,9 @@
 }
 
 [data-theme="dark"] .btn-start-practice {
-  background-color: #007acc;
-  border-color: #007acc;
-  box-shadow: 0 0 12px rgba(0, 122, 204, 0.45);
+  background-color: #2563eb;
+  border-color: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);
 }
 
 .flashcard-skip-row {
