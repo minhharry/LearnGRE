@@ -325,16 +325,44 @@
   background-color: var(--success-bg) !important;
   border-color: var(--success-border) !important;
   color: var(--success-text) !important;
+  box-shadow: 0 0 0 1px var(--success-border) !important;
 }
 
 .option-card.is-correct .option-card-label {
   color: var(--success-text) !important;
 }
 
+.option-card.is-correct .option-card-gloss {
+  color: var(--success-text) !important;
+  opacity: 0.9;
+}
+
 .option-card.is-correct .keycap {
   background-color: var(--success-border) !important;
   border-color: #047857 !important;
   border-bottom-color: #065f46 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .option-card.is-correct {
+  background-color: rgba(46, 160, 67, 0.18) !important;
+  border-color: #2ea043 !important;
+  color: #3fb950 !important;
+  box-shadow: 0 0 0 1px rgba(46, 160, 67, 0.35) !important;
+}
+
+[data-theme="dark"] .option-card.is-correct .option-card-label {
+  color: #3fb950 !important;
+}
+
+[data-theme="dark"] .option-card.is-correct .option-card-gloss {
+  color: #89d185 !important;
+}
+
+[data-theme="dark"] .option-card.is-correct .keycap {
+  background-color: #2ea043 !important;
+  border-color: #238636 !important;
+  border-bottom-color: #196c2e !important;
   color: #ffffff !important;
 }
 
@@ -629,18 +657,18 @@
   gap: 12px;
 }
 
-/* Dark Mode Overrides for Components - Monochrome Xanh Đen */
+/* Dark Mode Overrides for Components - VS Code Xanh Đen (Low-Strain Midnight Palette) */
 [data-theme="dark"] .rationale-clue-box {
-  background-color: #131e30;
+  background-color: var(--bg-tertiary);
 }
 
 [data-theme="dark"] .vocab-lookup-item {
-  background-color: #131e30;
+  background-color: var(--bg-tertiary);
 }
 
 [data-theme="dark"] .vocab-lookup-item.highlight-correct {
-  background-color: rgba(37, 99, 235, 0.2);
-  border-color: #3b82f6;
+  background-color: rgba(46, 160, 67, 0.18);
+  border-color: #2ea043;
 }
 
 [data-theme="dark"] .vocab-lookup-item.highlight-incorrect {
@@ -649,15 +677,15 @@
 }
 
 [data-theme="dark"] .tc-blank {
-  background-color: #132238;
+  background-color: var(--accent-light);
   color: #60a5fa;
   border-bottom-color: #3b82f6;
 }
 
 [data-theme="dark"] .tc-blank.filled-correct {
-  background-color: rgba(37, 99, 235, 0.2);
-  border-bottom-color: #3b82f6;
-  color: #93c5fd;
+  background-color: rgba(46, 160, 67, 0.18);
+  border-bottom-color: #2ea043;
+  color: #3fb950;
 }
 
 [data-theme="dark"] .tc-blank.filled-incorrect {
@@ -669,84 +697,84 @@
 [data-theme="dark"] .flash-pos-pill,
 [data-theme="dark"] .question-domain-tag,
 [data-theme="dark"] .session-type-badge {
-  background-color: #131e30;
-  color: #7e92ab;
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
 }
 
 [data-theme="dark"] .stat-card {
-  background-color: #131e30;
-  border-color: #1c2a42;
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
 }
 
 [data-theme="dark"] .dashboard-widget-card {
-  background-color: #0d1522;
-  border-color: #1c2a42;
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
 }
 
 [data-theme="dark"] .dashboard-widget-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--border-focus);
 }
 
 [data-theme="dark"] .widget-badge.badge-idle {
-  background-color: #131e30;
-  border-color: #1c2a42;
-  color: #7e92ab;
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-muted);
 }
 
 [data-theme="dark"] .widget-badge.badge-countdown {
-  background-color: #132238;
-  border-color: #2563eb;
+  background-color: var(--accent-light);
+  border-color: var(--accent-border);
   color: #60a5fa;
 }
 
 [data-theme="dark"] .widget-badge.badge-due-pulse {
-  background-color: #132238;
-  border-color: #2563eb;
+  background-color: var(--accent-light);
+  border-color: var(--accent-border);
   color: #60a5fa;
 }
 
 [data-theme="dark"] .widget-badge.badge-active {
-  background-color: #132238;
-  border-color: #2563eb;
+  background-color: var(--accent-light);
+  border-color: var(--accent-border);
   color: #60a5fa;
 }
 
 [data-theme="dark"] .widget-badge.badge-success {
-  background-color: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #34d399;
+  background-color: rgba(46, 160, 67, 0.18);
+  border-color: rgba(46, 160, 67, 0.4);
+  color: #3fb950;
 }
 
 [data-theme="dark"] .modal-card {
-  background-color: #0d1522;
-  border-color: #1c2a42;
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
 }
 
 [data-theme="dark"] .modal-header,
 [data-theme="dark"] .modal-footer {
-  background-color: #080d16;
-  border-color: #1c2a42;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
 }
 
 [data-theme="dark"] .word-table th {
-  background-color: #131e30;
-  border-color: #1c2a42;
-  color: #7e92ab;
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-muted);
 }
 
 [data-theme="dark"] .word-table td {
-  border-color: #121a28;
+  border-color: var(--border-subtle);
 }
 
 [data-theme="dark"] .action-chip-btn {
-  background-color: #131e30;
-  border-color: #1c2a42;
-  color: #cbd5e1;
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-body);
 }
 
 [data-theme="dark"] .action-chip-btn:hover {
-  background-color: #1a263c;
-  border-color: #3b82f6;
+  background-color: var(--bg-elevated);
+  border-color: var(--border-focus);
   color: #ffffff;
 }
 
@@ -859,13 +887,13 @@
 }
 
 [data-theme="dark"] .btn-due-review.has-due {
-  background-color: #132238;
+  background-color: var(--accent-light);
   border-color: #2563eb;
   color: #93c5fd;
 }
 
 [data-theme="dark"] .btn-due-review.has-due:hover {
-  background-color: #1a2c4e;
+  background-color: #223049;
   border-color: #3b82f6;
   color: #ffffff;
 }
@@ -1449,16 +1477,16 @@
 .level-pill-4 { background-color: #2563eb; color: #ffffff; border: 1px solid #1d4ed8; }
 .level-pill-4 .level-dot { background-color: #ffffff; }
 
-/* Dark Mode Level Overrides - Monochrome Xanh Đen */
+/* Dark Mode Level Overrides - VS Code Xanh Đen */
 [data-theme="dark"] .level-pill-0 {
-  background-color: #131e30;
-  border: 1px solid #1c2a42;
-  color: #7e92ab;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
 }
-[data-theme="dark"] .level-pill-0 .level-dot { background-color: #50637d; }
+[data-theme="dark"] .level-pill-0 .level-dot { background-color: #56677f; }
 
 [data-theme="dark"] .level-pill-1 {
-  background-color: #10203d;
+  background-color: #152236;
   border: 1px solid #1e3a8a;
   color: #93c5fd;
 }
@@ -1467,7 +1495,7 @@
 }
 
 [data-theme="dark"] .level-pill-2 {
-  background-color: #142b54;
+  background-color: #182b4a;
   border: 1px solid #2563eb;
   color: #bfdbfe;
 }
@@ -1476,7 +1504,7 @@
 }
 
 [data-theme="dark"] .level-pill-3 {
-  background-color: #193970;
+  background-color: #1c3560;
   border: 1px solid #3b82f6;
   color: #dbeafe;
 }
@@ -1728,7 +1756,7 @@
 }
 
 [data-theme="dark"] .kpi-badge-orange {
-  background-color: #132238;
+  background-color: var(--accent-light);
   color: #60a5fa;
   border-color: #2563eb;
 }
@@ -2318,8 +2346,8 @@
 }
 
 [data-theme="dark"] .flashcard-main-card {
-  background-color: #0d1522;
-  border-color: #1c2a42;
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
 }
 
 .flashcard-word-header {
@@ -2442,8 +2470,8 @@
 }
 
 [data-theme="dark"] .flashcard-example-section {
-  background-color: #131e30;
-  border-color: #1c2a42;
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
 }
 
 .domain-pill {
@@ -2533,9 +2561,9 @@
 }
 
 [data-theme="dark"] .tag-syn {
-  background: #1a263c;
+  background: var(--bg-elevated);
   color: #cbd5e1;
-  border-color: #2b3e60;
+  border-color: var(--border-hover);
 }
 
 .tag-ant {
@@ -2574,8 +2602,8 @@
 }
 
 [data-theme="dark"] .form-pill {
-  background-color: #131e30;
-  border-color: #1c2a42;
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
   color: #cbd5e1;
 }
 

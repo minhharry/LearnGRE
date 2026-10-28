@@ -365,7 +365,7 @@ body.in-session .split-handle {
 
 [data-theme="dark"] .nav-badge-amber,
 [data-theme="dark"] .nav-badge-blue {
-  background: #132238;
+  background: var(--accent-light);
   color: #60a5fa;
   border-color: #2563eb;
 }
