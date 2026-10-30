@@ -1,4 +1,4 @@
-const CACHE_NAME = 'learngre-v8';
+const CACHE_NAME = 'learngre-v9';
 const FONT_CACHE_NAME = 'learngre-fonts';
 
 // Static application assets to pre-cache on install

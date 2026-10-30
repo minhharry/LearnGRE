@@ -627,7 +627,7 @@ export function renderOverviewDashboard({
     else if (lvl === 1) level1Count++;
     else level0Count++;
 
-    if (rec && (rec.flagged_error || (rec.mistake_count && rec.mistake_count > 0))) {
+    if (rec && rec.flagged_error) {
       flaggedCount++;
     }
   }
