@@ -69,7 +69,7 @@ function getFutureIsoTimestamp(hoursAhead) {
  * @param {Object} wordRecord - Current progress object of the target word.
  * @param {boolean} isCorrect - Whether user chose the right answer.
  * @param {number} responseTimeMs - Time taken in milliseconds.
- * @param {string} questionType - 'TC' | 'FLASH' | 'SPEED_MATCH'.
+ * @param {string} questionType - 'TC' | 'FLASH' | 'REVERSE_FLASH' | 'SPEED_MATCH'.
  * @param {string} sentenceText - The sentence text for TC (to compute expected time).
  * @param {boolean} isFirstEncounter - Whether this is the first encounter.
  * @param {boolean} hasBeenPromotedThisSession - Whether word was already promoted this session.

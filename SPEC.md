@@ -69,8 +69,9 @@ Loại bỏ toàn bộ các nút bấm xác nhận rườm rà ("Submit", "Chắ
 | Loại câu hỏi | Cơ chế Tương tác & Chấm điểm Tự động | Hành động Chuyển câu |
 | --- | --- | --- |
 | **1. Speed Match** (Ghép 4 cặp từ - nghĩa) | Nhấp chuột hoặc bấm phím: Cho phép chọn 2 chiều (Từ vựng -> Nghĩa HOẶC Nghĩa -> Từ vựng). Phím `1-4` chọn Từ vựng, `Q, W, E, R` chọn Nghĩa. Đúng: Cặp thẻ mờ đi (`opacity: 0.2`). Sai: Nháy đỏ `200ms` và hủy chọn. | Hoàn tất 4 cặp: Tự động chuyển câu tiếp theo sau `350ms`. |
-| **2. Flash Recall** (Trắc nghiệm nghĩa nhanh, 4 lựa chọn) | Hiển thị 1 từ vựng (hoặc định nghĩa) cùng 4 phương án. **Bấm chọn 1 đáp án là chấm điểm ngay lập tức.** | Đúng: Tự động chuyển tiếp sau `500ms`. Sai: Dừng lại hiện định nghĩa, bấm `Space/Enter` để tiếp tục. |
-| **3. Text Completion (TC)** (1 chỗ trống, 4 lựa chọn) | **Single-Action Trigger:** Click chuột hoặc bấm phím `1-4`, hệ thống khóa đáp án, chấm điểm, điền từ vào chỗ trống và hiển thị rationale phân tích ngữ cảnh. | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
+| **2. Flash Recall** (Trắc nghiệm nghĩa nhanh, 4 lựa chọn) | Hiển thị 1 từ vựng cùng 4 phương án định nghĩa. **Bấm chọn 1 đáp án là chấm điểm ngay lập tức.** | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
+| **3. Reverse Flash Recall** (Trắc nghiệm nhận diện từ vựng ngược, 4 lựa chọn) | Hiển thị nghĩa của từ vựng cùng 4 phương án là các từ tiếng Anh ngẫu nhiên cùng từ loại. **Bấm chọn 1 đáp án là chấm điểm ngay lập tức.** | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
+| **4. Text Completion (TC)** (1 chỗ trống, 4 lựa chọn) | **Single-Action Trigger:** Click chuột hoặc bấm phím `1-4`, hệ thống khóa đáp án, chấm điểm, điền từ vào chỗ trống và hiển thị rationale phân tích ngữ cảnh. | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
 
 ### 2.3. Hệ thống Phím tắt Thống nhất (Unified Mouseless Workflow)
 
@@ -78,8 +79,7 @@ Tất cả các dạng trắc nghiệm đơn đều chuẩn hóa về dãy phím
 
 | Phím tắt | Chức năng trong Phiên học |
 | --- | --- |
-| **`1` - `4`** | Chọn phương án tương ứng trong câu **Flash Recall** (chấm điểm tức thì). |
-| **`1` - `4`** | Chọn phương án tương ứng trong câu **Text Completion (TC)** (chấm điểm tức thì). |
+| **`1` - `4`** | Chọn phương án tương ứng trong câu **Flash Recall**, **Reverse Flash Recall** hoặc **Text Completion (TC)** (chấm điểm tức thì). |
 | **`1` - `4`** & **`Q, W, E, R`** | Trong câu **Speed Match**: Phím `1-4` chọn cột Từ vựng bên trái; phím `Q, W, E, R` chọn cột Định nghĩa bên phải (cho phép chọn linh hoạt 2 chiều). |
 | **`P`** | Phát âm từ vựng hiện tại (Text-to-Speech qua Web Speech API native của trình duyệt). |
 | **`Space`** hoặc **`Enter`** | Chuyển sang câu hỏi tiếp theo sau khi bảng giải thích/kết quả đã hiển thị. |
@@ -208,7 +208,7 @@ Không áp đặt 4 nhịp sóng cứng nhắc. Thuật toán phân bổ câu h�
    * **New Words Pool:** Các từ mới tinh (Level 0) thuộc Group hiện tại.
 2. **Cơ chế Điều phối Dạng câu hỏi:**
    * **Làm nóng (Warm-up):** Bắt đầu bằng 1 bài Speed Match (ghép 4 cặp) hoặc 2 câu Flash Recall để kích hoạt trí nhớ nhanh với các từ mới nạp.
-   * **Trọng tâm (Core):** Đan xen linh hoạt giữa Text Completion (đọc hiểu ngữ cảnh sâu) và Flash Recall (phản xạ từ - nghĩa).
+   * **Trọng tâm (Core):** Phân bổ ngẫu nhiên 1 trong 3 dạng câu hỏi (Text Completion đọc hiểu ngữ cảnh sâu, Flash Recall phản xạ từ -> nghĩa, hoặc Reverse Flash Recall phản xạ nghĩa -> từ) cho mỗi từ trong phiên.
    * **Vòng lặp Gỡ lỗi (Redemption Loop):** Xuất hiện ở cuối phiên nếu có câu trả lời sai. Hệ thống chọn một biến thể câu hỏi TC mới hoặc bài tập recall để người học sửa sai ngay lập tức trước khi hoàn tất phiên.
 3. **Màn hình Tổng kết Phiên (Session Summary):**
    * Hiển thị tỷ lệ chính xác (%), tốc độ phản hồi trung bình, số từ đã thăng cấp và tiến độ mở khóa Group.

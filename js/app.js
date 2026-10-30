@@ -30,6 +30,7 @@ import {
   applyStreakAccent,
   renderSpeedMatchQuestion,
   renderFlashRecallQuestion,
+  renderReverseFlashRecallQuestion,
   renderTcQuestion,
   renderTcRationale,
   renderFlashFeedback,
@@ -503,6 +504,31 @@ class AppController {
           renderFlashFeedback({
             question,
             isCorrect,
+            onContinue: () => this.advanceToNextQuestion(),
+          });
+        },
+      });
+    } else if (question.type === 'REVERSE_FLASH') {
+      renderReverseFlashRecallQuestion({
+        question,
+        isFlagged,
+        onToggleFlag: () => this.toggleCurrentQuestionWordFlag(),
+        onSelectOption: ({ isCorrect, chosenWord }) => {
+          const elapsed = Date.now() - this.questionStartTime;
+          this.handleQuestionAnswer({
+            isCorrect,
+            responseTimeMs: elapsed,
+            questionType: 'REVERSE_FLASH',
+            sentenceText: '',
+          });
+
+          // Always show answer key and feedback even if right
+          this.isWaitingForContinue = true;
+          renderFlashFeedback({
+            question,
+            isCorrect,
+            chosenWord,
+            autoAudio: this.storageData.ui_prefs.auto_audio !== false,
             onContinue: () => this.advanceToNextQuestion(),
           });
         },
@@ -998,8 +1024,8 @@ class AppController {
         // Key P: Pronunciation
         if (e.key === 'p' || e.key === 'P') {
           e.preventDefault();
-          // Avoid spoiling TC questions before user has answered
-          if (q.type === 'TC' && !this.isWaitingForContinue) {
+          // Avoid spoiling TC and Reverse Flash questions before user has answered
+          if ((q.type === 'TC' || q.type === 'REVERSE_FLASH') && !this.isWaitingForContinue) {
             return;
           }
           const word = q.targetWord ? q.targetWord.word : q.promptWord || q.correctWord;

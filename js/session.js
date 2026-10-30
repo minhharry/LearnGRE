@@ -67,15 +67,10 @@ export class SessionManager {
         this.queue.push(this.createSpeedMatchQuestion(selectedWords.slice(0, 4)));
       }
 
-      // Core: Interleaved TC and Flash Recall for ALL due words
+      // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall) for ALL due words
       for (let i = 0; i < selectedWords.length; i++) {
         const word = selectedWords[i];
-        const hasTc = this.questionsByTargetId.has(word.id);
-        if (hasTc && (i % 2 === 0 || selectedWords.length < 6)) {
-          this.queue.push(this.createTcQuestion(word));
-        } else {
-          this.queue.push(this.createFlashRecallQuestion(word));
-        }
+        this.queue.push(this.createRandomQuestion(word));
       }
       return;
     }
@@ -199,16 +194,10 @@ export class SessionManager {
       this.queue.push(this.createSpeedMatchQuestion(warmUpWords));
     }
 
-    // Core: Interleaved TC and Flash Recall
+    // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall)
     for (let i = 0; i < targetWords.length; i++) {
       const word = targetWords[i];
-      // Alternate between TC and Flash Recall based on availability of TC template
-      const hasTc = this.questionsByTargetId.has(word.id);
-      if (hasTc && (i % 2 === 0 || targetWords.length < 6)) {
-        this.queue.push(this.createTcQuestion(word));
-      } else {
-        this.queue.push(this.createFlashRecallQuestion(word));
-      }
+      this.queue.push(this.createRandomQuestion(word));
     }
   }
 
@@ -287,6 +276,50 @@ export class SessionManager {
   }
 
   /**
+   * Creates a Reverse Flash Recall question for a target word.
+   * Displays the definition/meaning in the prompt, with 4 random words as options.
+   */
+  createReverseFlashRecallQuestion(targetWord) {
+    const distractors = selectFlashDistractors(targetWord, this.allVocab);
+    const options = [
+      {
+        id: targetWord.id,
+        word: targetWord.word,
+        text: targetWord.word,
+        isCorrect: true,
+        pos: targetWord.pos,
+        vi_gloss: targetWord.vi_gloss || '',
+        definition: (targetWord.definitions && targetWord.definitions[0]) || '',
+      },
+      ...distractors.map((d) => ({
+        id: d.id,
+        word: d.word,
+        text: d.word,
+        isCorrect: false,
+        pos: d.pos,
+        vi_gloss: d.vi_gloss || '',
+        definition: (d.definitions && d.definitions[0]) || '',
+      })),
+    ];
+
+    const shuffled = shuffleArray(options).map((opt, index) => ({
+      ...opt,
+      keycap: String(index + 1),
+    }));
+
+    return {
+      type: 'REVERSE_FLASH',
+      targetId: targetWord.id,
+      targetWord,
+      options: shuffled,
+      promptWord: targetWord.word,
+      promptMeaning: targetWord.vi_gloss || (targetWord.definitions && targetWord.definitions[0]) || '',
+      promptEnDef: (targetWord.vi_gloss && targetWord.definitions && targetWord.definitions[0]) || '',
+      pos: targetWord.pos,
+    };
+  }
+
+  /**
    * Creates a Text Completion (TC) question for a target word.
    */
   createTcQuestion(targetWord) {
@@ -348,13 +381,27 @@ export class SessionManager {
   }
 
   /**
+   * Helper to create a question for a word randomly choosing 1 of 3 types:
+   * Text Completion (TC), Flash Recall (FLASH), or Reverse Flash Recall (REVERSE_FLASH).
+   */
+  createRandomQuestion(word) {
+    const hasTc = this.questionsByTargetId.has(word.id);
+    const availableTypes = hasTc ? ['TC', 'FLASH', 'REVERSE_FLASH'] : ['FLASH', 'REVERSE_FLASH'];
+    const chosenType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    if (chosenType === 'TC') {
+      return this.createTcQuestion(word);
+    } else if (chosenType === 'REVERSE_FLASH') {
+      return this.createReverseFlashRecallQuestion(word);
+    } else {
+      return this.createFlashRecallQuestion(word);
+    }
+  }
+
+  /**
    * Helper to create best question for a word.
    */
   createQuestionForWord(word) {
-    if (this.questionsByTargetId.has(word.id)) {
-      return this.createTcQuestion(word);
-    }
-    return this.createFlashRecallQuestion(word);
+    return this.createRandomQuestion(word);
   }
 
   /**
@@ -365,8 +412,8 @@ export class SessionManager {
     // Check if not already in redemption
     const exists = this.redemptionQueue.some((q) => q.targetId === word.id);
     if (!exists) {
-      // Pick a different question or flash recall
-      this.redemptionQueue.push(this.createFlashRecallQuestion(word));
+      // Pick a random question type
+      this.redemptionQueue.push(this.createRandomQuestion(word));
     }
   }
 

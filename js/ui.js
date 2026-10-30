@@ -1878,6 +1878,111 @@ export function renderFlashRecallQuestion({
 }
 
 /**
+ * Renders Reverse Flash Recall question screen.
+ * Shows meaning of the word in prompt, 1-4 options are words.
+ */
+export function renderReverseFlashRecallQuestion({
+  question,
+  onSelectOption,
+  isFlagged,
+  onToggleFlag,
+}) {
+  const stage = document.getElementById('main-stage');
+
+  stage.innerHTML = `
+    <div class="question-viewport animate-fade-in">
+      <div class="question-card">
+        <div class="question-card-meta">
+          <span class="question-domain-tag">${question.targetWord && question.targetWord.group ? `Group ${question.targetWord.group} - ` : ''}Reverse Flash Recall</span>
+          <div class="question-card-actions">
+            <button id="btn-reverse-flash-audio" class="action-chip-btn" style="display: none;" title="Phát âm (P)">
+              ${ICONS.audio} <span>Nghe (P)</span>
+            </button>
+            <button id="btn-reverse-flash-flag" class="action-chip-btn ${isFlagged ? 'flagged' : ''}" title="Ghi vào Sổ tay câu sai (S)">
+              ${ICONS.flag} <span>${isFlagged ? 'Đã ghim (S)' : 'Ghim (S)'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flash-prompt-container reverse-flash-prompt-container">
+          <div class="flash-pos-pill">${question.pos}</div>
+          <div class="reverse-flash-meaning">${question.promptMeaning}</div>
+          ${question.promptEnDef ? `<div class="reverse-flash-en-def">${question.promptEnDef}</div>` : ''}
+        </div>
+
+        <div class="options-grid" id="reverse-flash-options-container">
+          ${question.options
+            .map(
+              (opt) => `
+            <div class="option-card" data-key="${opt.keycap}" data-word="${opt.word}" data-correct="${opt.isCorrect}">
+              <span class="keycap">${opt.keycap}</span>
+              <div class="option-card-label">${opt.word}</div>
+            </div>
+          `
+            )
+            .join('')}
+        </div>
+      </div>
+
+      <div id="flash-feedback-placeholder"></div>
+    </div>
+  `;
+
+  document.getElementById('btn-reverse-flash-audio')?.addEventListener('click', () => {
+    playPronunciation(question.targetWord.word);
+  });
+  document.getElementById('btn-reverse-flash-flag')?.addEventListener('click', () => {
+    onToggleFlag();
+  });
+
+  let answered = false;
+
+  const handleSelection = (selectedEl) => {
+    if (answered) return;
+    answered = true;
+
+    // Reveal audio button
+    const audioBtn = document.getElementById('btn-reverse-flash-audio');
+    if (audioBtn) {
+      audioBtn.style.display = 'inline-flex';
+      audioBtn.title = `Phát âm: ${question.targetWord.word} (P)`;
+      const span = audioBtn.querySelector('span');
+      if (span) span.textContent = `Nghe (${question.targetWord.word}) (P)`;
+    }
+
+    // Lock all option cards
+    stage.querySelectorAll('.option-card').forEach((c) => c.classList.add('locked'));
+
+    const isCorrect = selectedEl.dataset.correct === 'true';
+    const chosenWord = selectedEl.dataset.word;
+
+    if (isCorrect) {
+      selectedEl.classList.add('is-correct');
+    } else {
+      selectedEl.classList.add('is-incorrect');
+      // Highlight the correct one
+      const correctEl = stage.querySelector('.option-card[data-correct="true"]');
+      if (correctEl) correctEl.classList.add('is-correct');
+    }
+
+    onSelectOption({
+      isCorrect,
+      chosenWord,
+      selectedEl,
+    });
+  };
+
+  stage.querySelectorAll('.option-card').forEach((el) => {
+    el.addEventListener('click', () => handleSelection(el));
+  });
+
+  window.__choiceOptionTrigger = (numKey) => {
+    const el = stage.querySelector(`.option-card[data-key="${numKey}"]:not(.locked)`);
+    if (el) handleSelection(el);
+  };
+}
+
+/**
  * Renders Text Completion (TC) question screen.
  */
 export function renderTcQuestion({
@@ -2104,9 +2209,9 @@ export function renderTcRationale({ question, isCorrect, chosenWord, onContinue,
 }
 
 /**
- * Shows definition feedback and answer key for Flash Recall question.
+ * Shows definition feedback and answer key for Flash Recall & Reverse Flash Recall questions.
  */
-export function renderFlashFeedback({ question, isCorrect = false, onContinue }) {
+export function renderFlashFeedback({ question, isCorrect = false, chosenWord = null, autoAudio = false, onContinue }) {
   const container = document.getElementById('flash-feedback-placeholder');
   if (!container) return;
 
@@ -2117,6 +2222,28 @@ export function renderFlashFeedback({ question, isCorrect = false, onContinue })
     ? `<span class="badge badge-green">Chính xác!</span>`
     : `<span class="badge badge-red">Chưa chính xác</span>`;
 
+  const displayAnswerWord = question.targetWord ? question.targetWord.word : (question.promptWord || '');
+
+  let wrongOptionCardHtml = '';
+  if (!isCorrect && chosenWord && chosenWord.toLowerCase() !== displayAnswerWord.toLowerCase() && question.options) {
+    const wrongOpt = question.options.find((o) => o.word && o.word.toLowerCase() === chosenWord.toLowerCase());
+    if (wrongOpt) {
+      wrongOptionCardHtml = `
+        <div class="vocab-lookup-item highlight-incorrect">
+          <div class="lookup-word-row">
+            <span class="lookup-word">${wrongOpt.word} (Đã chọn)</span>
+            <button class="lookup-audio-btn" data-word="${wrongOpt.word}" title="Nghe phát âm: ${wrongOpt.word}">
+              ${ICONS.audio}
+            </button>
+          </div>
+          <span class="lookup-pos">${wrongOpt.pos || ''}</span>
+          <span class="lookup-vi">${wrongOpt.vi_gloss || ''}</span>
+          <span class="lookup-en">${wrongOpt.definition || ''}</span>
+        </div>
+      `;
+    }
+  }
+
   container.innerHTML = `
     <div class="rationale-container animate-fade-in" style="margin-top: 12px;">
       <div class="rationale-header">
@@ -2124,22 +2251,23 @@ export function renderFlashFeedback({ question, isCorrect = false, onContinue })
           ${ICONS.book}
           ${statusBadge}
           <span>Đáp án:</span>
-          <span class="badge badge-green" style="margin-left: 6px;">${question.promptWord}</span>
+          <span class="badge badge-green" style="margin-left: 6px;">${displayAnswerWord}</span>
         </div>
       </div>
 
       <div class="vocab-lookup-grid">
         <div class="vocab-lookup-item highlight-correct">
           <div class="lookup-word-row">
-            <span class="lookup-word">${question.targetWord.word}</span>
-            <button class="lookup-audio-btn" data-word="${question.targetWord.word}" title="Nghe phát âm: ${question.targetWord.word}">
+            <span class="lookup-word">${displayAnswerWord}</span>
+            <button class="lookup-audio-btn" data-word="${displayAnswerWord}" title="Nghe phát âm: ${displayAnswerWord}">
               ${ICONS.audio}
             </button>
           </div>
-          <span class="lookup-pos">${question.targetWord.pos}</span>
-          <span class="lookup-vi">${question.targetWord.vi_gloss}</span>
-          <span class="lookup-en">${(question.targetWord.definitions && question.targetWord.definitions[0]) || ''}</span>
+          <span class="lookup-pos">${question.targetWord ? question.targetWord.pos : (question.pos || '')}</span>
+          <span class="lookup-vi">${question.targetWord ? question.targetWord.vi_gloss : ''}</span>
+          <span class="lookup-en">${(question.targetWord && question.targetWord.definitions && question.targetWord.definitions[0]) || ''}</span>
         </div>
+        ${wrongOptionCardHtml}
       </div>
 
       <div class="session-footer-bar">
@@ -2157,6 +2285,12 @@ export function renderFlashFeedback({ question, isCorrect = false, onContinue })
       playPronunciation(btn.dataset.word);
     });
   });
+
+  if (autoAudio && displayAnswerWord) {
+    setTimeout(() => {
+      playPronunciation(displayAnswerWord);
+    }, 120);
+  }
 
   setTimeout(() => {
     const mainStage = document.getElementById('main-stage');
