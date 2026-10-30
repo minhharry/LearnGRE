@@ -298,13 +298,20 @@ export class SessionManager {
     // Pick a random template variant
     const tpl = templates[Math.floor(Math.random() * templates.length)];
 
+    // Select dynamic distractors using the distractor engine (same as Flash Recall)
+    // Fall back to template distractors if distractor engine returns empty
+    const dynamicDistractors = selectFlashDistractors(targetWord, this.allVocab);
+    const distractorWords = (dynamicDistractors && dynamicDistractors.length > 0)
+      ? dynamicDistractors.map((d) => d.word)
+      : (tpl.distractors || []);
+
     // Build the 4 options: 1 correct + 3 distractors
     const rawOptions = [
       {
         word: tpl.correct_answer,
         isCorrect: true,
       },
-      ...(tpl.distractors || []).map((dWord) => ({
+      ...distractorWords.map((dWord) => ({
         word: dWord,
         isCorrect: false,
       })),
