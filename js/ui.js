@@ -2224,37 +2224,65 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
 
   const displayAnswerWord = question.targetWord ? question.targetWord.word : (question.promptWord || '');
 
-  let wrongOptionCardHtml = '';
-  if (!isCorrect && chosenWord && chosenWord.toLowerCase() !== displayAnswerWord.toLowerCase() && question.options) {
-    const wrongOpt = question.options.find((o) => o.word && o.word.toLowerCase() === chosenWord.toLowerCase());
-    if (wrongOpt) {
-      wrongOptionCardHtml = `
-        <div class="vocab-lookup-item highlight-incorrect">
-          <div class="lookup-word-row">
-            <span class="lookup-word">${wrongOpt.word} (Đã chọn)</span>
-            <button class="lookup-audio-btn" data-word="${wrongOpt.word}" title="Nghe phát âm: ${wrongOpt.word}">
-              ${ICONS.audio}
-            </button>
-          </div>
-          <span class="lookup-pos">${wrongOpt.pos || ''}</span>
-          <span class="lookup-vi">${wrongOpt.vi_gloss || ''}</span>
-          <span class="lookup-en">${wrongOpt.definition || ''}</span>
-        </div>
-      `;
-    }
-  }
-
-  container.innerHTML = `
-    <div class="rationale-container animate-fade-in" style="margin-top: 12px;">
-      <div class="rationale-header">
-        <div class="rationale-title">
-          ${ICONS.book}
-          ${statusBadge}
-          <span>Đáp án:</span>
-          <span class="badge badge-green" style="margin-left: 6px;">${displayAnswerWord}</span>
-        </div>
+  let optionsLookupHtml = '';
+  if (question.type === 'REVERSE_FLASH' && Array.isArray(question.options)) {
+    // Với REVERSE_FLASH, hiển thị đầy đủ cả 4 lựa chọn từ + nghĩa như câu TC
+    optionsLookupHtml = `
+      <div style="font-weight: 700; font-size: 13px; color: var(--text-title); margin-top: 10px; margin-bottom: 6px;">
+        Tra cứu nghĩa 4 lựa chọn:
       </div>
+      <div class="vocab-lookup-grid">
+        ${question.options
+          .map((opt) => {
+            const isSelectedWrong =
+              !isCorrect &&
+              chosenWord &&
+              opt.word &&
+              opt.word.toLowerCase() === chosenWord.toLowerCase();
+            const highlightClass = opt.isCorrect
+              ? 'highlight-correct'
+              : (isSelectedWrong ? 'highlight-incorrect' : '');
 
+            return `
+          <div class="vocab-lookup-item ${highlightClass}">
+            <div class="lookup-word-row">
+              <span class="lookup-word">${opt.word}${isSelectedWrong ? ' (Đã chọn)' : ''}</span>
+              <button class="lookup-audio-btn" data-word="${opt.word}" title="Nghe phát âm: ${opt.word}">
+                ${ICONS.audio}
+              </button>
+            </div>
+            <span class="lookup-pos">${opt.pos || ''}</span>
+            <span class="lookup-vi">${opt.vi_gloss || ''}</span>
+            <span class="lookup-en">${opt.definition || ''}</span>
+          </div>
+        `;
+          })
+          .join('')}
+      </div>
+    `;
+  } else {
+    // Với FLASH recall truyền thống (prompt là từ tiếng Anh, 4 options là nghĩa tiếng Việt)
+    let wrongOptionCardHtml = '';
+    if (!isCorrect && chosenWord && chosenWord.toLowerCase() !== displayAnswerWord.toLowerCase() && question.options) {
+      const wrongOpt = question.options.find((o) => o.word && o.word.toLowerCase() === chosenWord.toLowerCase());
+      if (wrongOpt) {
+        wrongOptionCardHtml = `
+          <div class="vocab-lookup-item highlight-incorrect">
+            <div class="lookup-word-row">
+              <span class="lookup-word">${wrongOpt.word} (Đã chọn)</span>
+              <button class="lookup-audio-btn" data-word="${wrongOpt.word}" title="Nghe phát âm: ${wrongOpt.word}">
+                ${ICONS.audio}
+              </button>
+            </div>
+            <span class="lookup-pos">${wrongOpt.pos || ''}</span>
+            <span class="lookup-vi">${wrongOpt.vi_gloss || ''}</span>
+            <span class="lookup-en">${wrongOpt.definition || ''}</span>
+          </div>
+        `;
+      }
+    }
+
+    optionsLookupHtml = `
       <div class="vocab-lookup-grid">
         <div class="vocab-lookup-item highlight-correct">
           <div class="lookup-word-row">
@@ -2269,6 +2297,21 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
         </div>
         ${wrongOptionCardHtml}
       </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <div class="rationale-container animate-fade-in" style="margin-top: 12px;">
+      <div class="rationale-header">
+        <div class="rationale-title">
+          ${ICONS.book}
+          ${statusBadge}
+          <span>Đáp án:</span>
+          <span class="badge badge-green" style="margin-left: 6px;">${displayAnswerWord}</span>
+        </div>
+      </div>
+
+      ${optionsLookupHtml}
 
       <div class="session-footer-bar">
         <button id="btn-flash-continue" class="btn-primary">
