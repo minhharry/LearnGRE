@@ -490,7 +490,7 @@ class AppController {
         isFlagged,
         autoAudio: this.storageData.ui_prefs.auto_audio !== false,
         onToggleFlag: () => this.toggleCurrentQuestionWordFlag(),
-        onSelectOption: ({ isCorrect }) => {
+        onSelectOption: ({ isCorrect, chosenWord }) => {
           const elapsed = Date.now() - this.questionStartTime;
           this.handleQuestionAnswer({
             isCorrect,
@@ -501,9 +501,12 @@ class AppController {
 
           // Always show answer key and feedback even if right
           this.isWaitingForContinue = true;
+          const example = question.example || (this.activeSession ? this.activeSession.getWordExample(question.targetWord) : null);
           renderFlashFeedback({
             question,
             isCorrect,
+            chosenWord,
+            example,
             onContinue: () => this.advanceToNextQuestion(),
           });
         },
@@ -524,10 +527,12 @@ class AppController {
 
           // Always show answer key and feedback even if right
           this.isWaitingForContinue = true;
+          const example = question.example || (this.activeSession ? this.activeSession.getWordExample(question.targetWord) : null);
           renderFlashFeedback({
             question,
             isCorrect,
             chosenWord,
+            example,
             autoAudio: this.storageData.ui_prefs.auto_audio !== false,
             onContinue: () => this.advanceToNextQuestion(),
           });

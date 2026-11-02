@@ -437,6 +437,22 @@
     margin-bottom: 8px;
   }
 
+  .rationale-example-box {
+    padding: 8px 10px;
+    margin-top: 8px;
+    margin-bottom: 10px;
+  }
+
+  .rationale-example-sentence {
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .rationale-example-trans {
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
   .vocab-lookup-grid {
     gap: 5px;
     margin-top: 6px;

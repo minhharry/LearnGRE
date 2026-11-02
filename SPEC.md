@@ -239,9 +239,10 @@ Không áp đặt 4 nhịp sóng cứng nhắc. Thuật toán phân bổ câu h�
   5. **Kiểm tra Giao thoa Từ khóa Định nghĩa (Definition Keyword Overlap Filter with Stopwords):**
      * Hệ thống loại trừ danh sách stopwords học thuật thông dụng (ví dụ: *lacking, without, person, quality, state, feeling, make, cause, having, tendency, related*) trước khi so sánh từ khóa trong `definitions` và `vi_gloss`. Sau khi loại stopwords, nếu xuất hiện giao thoa từ khóa cốt lõi, từ đó bị loại khỏi ứng viên distractor.
 
-* **Cơ chế Hiển thị Rationale Tích hợp (Hybrid Rationale Display):**
+* **Cơ chế Hiển thị Rationale & Feedback Tích hợp (Hybrid Feedback & Rationale Display):**
   * Khi người học hoàn thành câu hỏi, giao diện hiển thị:
-    * **Phân tích Ngữ cảnh:** Đoạn văn giải thích mối liên kết giữa `clue` và từ đúng (do LLM viết).
+    * **Text Completion (TC):** Phân tích Ngữ cảnh (Clue + Rationale tiếng Việt) và Bảng tra cứu nghĩa 4 lựa chọn.
+    * **Flash Recall & Reverse Flash Recall:** Đáp án đúng (kèm nút nghe phát âm), Hộp ví dụ ngữ cảnh GRE (câu ví dụ tiếng Anh có in đậm từ mục tiêu + bản dịch nghĩa tiếng Việt), và Bảng tra cứu nghĩa 4 lựa chọn (hiển thị đầy đủ cả 4 lựa chọn, highlight xanh từ đúng, highlight đỏ phương án chọn sai kèm "(Đã chọn)", và nút nghe phát âm từng từ).
     * **Bảng tra cứu Nghĩa 4 Lựa chọn:** Tự động hiển thị `vi_gloss` và định nghĩa ngắn của cả 4 từ được tra cứu tức thì từ `vocab.jsonl` (không cần LLM phải giải thích dài dòng cho từng distractor sai).
 * Phía client thực hiện xáo trộn ngẫu nhiên 4 lựa chọn (Fisher-Yates) và ánh xạ cố định vào các phím số `1`, `2`, `3`, `4`.
 

@@ -577,6 +577,41 @@
   margin-bottom: 12px;
 }
 
+/* Example Sentence & Meaning Box for Flash Recall & Reverse Flash Recall */
+.rationale-example-box {
+  background-color: var(--bg-secondary);
+  border-left: 3px solid var(--accent-color);
+  padding: 10px 14px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.rationale-example-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  color: var(--accent-color);
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.rationale-example-sentence {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-body);
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.rationale-example-trans {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 /* 4-Word Lookup Table */
 .vocab-lookup-grid {
   display: grid;
@@ -679,7 +714,8 @@
 }
 
 /* Dark Mode Overrides for Components - VS Code Xanh Đen (Low-Strain Midnight Palette) */
-[data-theme="dark"] .rationale-clue-box {
+[data-theme="dark"] .rationale-clue-box,
+[data-theme="dark"] .rationale-example-box {
   background-color: var(--bg-tertiary);
 }
 

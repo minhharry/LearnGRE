@@ -272,6 +272,7 @@ export class SessionManager {
       options: shuffled,
       promptWord: targetWord.word,
       pos: targetWord.pos,
+      example: this.getWordExample(targetWord),
     };
   }
 
@@ -316,6 +317,7 @@ export class SessionManager {
       promptMeaning: targetWord.vi_gloss || (targetWord.definitions && targetWord.definitions[0]) || '',
       promptEnDef: (targetWord.vi_gloss && targetWord.definitions && targetWord.definitions[0]) || '',
       pos: targetWord.pos,
+      example: this.getWordExample(targetWord),
     };
   }
 
@@ -514,12 +516,14 @@ export class SessionManager {
    */
   getWordExample(word) {
     if (!word) return null;
-    const templates = this.questionsByTargetId.get(word.id);
+    const wordObj = typeof word === 'string' ? this.vocabByWord.get(word.toLowerCase()) : word;
+    if (!wordObj) return null;
+    const templates = this.questionsByTargetId.get(wordObj.id);
     if (!templates || templates.length === 0) return null;
     const template = templates[0];
     const highlightedSentence = (template.sentence || '').replace(
       /\[BLANK\]/g,
-      `<strong class="highlight-target-word">${word.word}</strong>`
+      `<strong class="highlight-target-word">${wordObj.word}</strong>`
     );
     return {
       sentence: highlightedSentence,

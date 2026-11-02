@@ -1813,7 +1813,7 @@ export function renderFlashRecallQuestion({
           ${question.options
             .map(
               (opt) => `
-            <div class="option-card" data-key="${opt.keycap}" data-correct="${opt.isCorrect}">
+            <div class="option-card" data-key="${opt.keycap}" data-word="${opt.word}" data-correct="${opt.isCorrect}">
               <span class="keycap">${opt.keycap}</span>
               <div class="option-card-label">${opt.text}</div>
             </div>
@@ -1852,6 +1852,7 @@ export function renderFlashRecallQuestion({
     stage.querySelectorAll('.option-card').forEach((c) => c.classList.add('locked'));
 
     const isCorrect = selectedEl.dataset.correct === 'true';
+    const chosenWord = selectedEl.dataset.word;
     if (isCorrect) {
       selectedEl.classList.add('is-correct');
     } else {
@@ -1863,6 +1864,7 @@ export function renderFlashRecallQuestion({
 
     onSelectOption({
       isCorrect,
+      chosenWord,
       selectedEl,
     });
   };
@@ -2211,7 +2213,7 @@ export function renderTcRationale({ question, isCorrect, chosenWord, onContinue,
 /**
  * Shows definition feedback and answer key for Flash Recall & Reverse Flash Recall questions.
  */
-export function renderFlashFeedback({ question, isCorrect = false, chosenWord = null, autoAudio = false, onContinue }) {
+export function renderFlashFeedback({ question, isCorrect = false, chosenWord = null, example = null, autoAudio = false, onContinue }) {
   const container = document.getElementById('flash-feedback-placeholder');
   if (!container) return;
 
@@ -2224,9 +2226,31 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
 
   const displayAnswerWord = question.targetWord ? question.targetWord.word : (question.promptWord || '');
 
+  // 1 Example sentence + meaning for the target word
+  const wordExample = example || question.example || (question.targetWord && question.targetWord.example) || null;
+  let exampleHtml = '';
+  if (wordExample && wordExample.sentence) {
+    exampleHtml = `
+      <div class="rationale-example-box">
+        <div class="rationale-example-label">
+          <span>Ví dụ ngữ cảnh GRE:</span>
+          ${wordExample.domain ? `<span class="domain-pill">${wordExample.domain}</span>` : ''}
+        </div>
+        <div class="rationale-example-sentence">
+          ${wordExample.sentence}
+        </div>
+        ${wordExample.translation ? `
+          <div class="rationale-example-trans">
+            ${wordExample.translation}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
   let optionsLookupHtml = '';
-  if (question.type === 'REVERSE_FLASH' && Array.isArray(question.options)) {
-    // Với REVERSE_FLASH, hiển thị đầy đủ cả 4 lựa chọn từ + nghĩa như câu TC
+  if (Array.isArray(question.options) && question.options.length > 0) {
+    // Hiển thị đầy đủ cả 4 lựa chọn từ + nghĩa cho cả FLASH và REVERSE_FLASH
     optionsLookupHtml = `
       <div style="font-weight: 700; font-size: 13px; color: var(--text-title); margin-top: 10px; margin-bottom: 6px;">
         Tra cứu nghĩa 4 lựa chọn:
@@ -2261,7 +2285,7 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
       </div>
     `;
   } else {
-    // Với FLASH recall truyền thống (prompt là từ tiếng Anh, 4 options là nghĩa tiếng Việt)
+    // Fallback nếu không có question.options
     let wrongOptionCardHtml = '';
     if (!isCorrect && chosenWord && chosenWord.toLowerCase() !== displayAnswerWord.toLowerCase() && question.options) {
       const wrongOpt = question.options.find((o) => o.word && o.word.toLowerCase() === chosenWord.toLowerCase());
@@ -2308,8 +2332,13 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
           ${statusBadge}
           <span>Đáp án:</span>
           <span class="badge badge-green" style="margin-left: 6px;">${displayAnswerWord}</span>
+          <button id="btn-flash-feedback-audio" class="action-chip-btn" style="margin-left: 6px; padding: 2px 8px;" title="Nghe phát âm: ${displayAnswerWord}">
+            ${ICONS.audio} <span>Nghe</span>
+          </button>
         </div>
       </div>
+
+      ${exampleHtml}
 
       ${optionsLookupHtml}
 
@@ -2322,6 +2351,9 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
   `;
 
   document.getElementById('btn-flash-continue')?.addEventListener('click', onContinue);
+  document.getElementById('btn-flash-feedback-audio')?.addEventListener('click', () => {
+    playPronunciation(displayAnswerWord);
+  });
   container.querySelectorAll('.lookup-audio-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
