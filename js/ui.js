@@ -510,7 +510,7 @@ export function formatTargetDateTime(timestamp) {
 
 /**
  * Inspects storageData to calculate SRS review deadlines,
- * taking into account the lookahead window (default: 15 minutes).
+ * distinguishing strictly overdue words from upcoming words that can be reviewed early (15-min lookahead).
  */
 export function getNextReviewInfo(storageData, currentGroup, vocabList, lookaheadMs = SRS_CONFIG.due_lookahead_ms) {
   const now = Date.now();
@@ -533,20 +533,29 @@ export function getNextReviewInfo(storageData, currentGroup, vocabList, lookahea
     }
   }
 
-  const dueWords = wordsWithReview.filter((item) => item.reviewTime <= cutoff);
-  const upcomingWords = wordsWithReview.filter((item) => item.reviewTime > cutoff);
+  // Strictly overdue words (deadline already passed)
+  const strictlyDueWords = wordsWithReview.filter((item) => item.reviewTime <= now);
+  // Early review words (in next 15 minutes)
+  const lookaheadWords = wordsWithReview.filter((item) => item.reviewTime > now && item.reviewTime <= cutoff);
+  // All upcoming words in future
+  const upcomingWords = wordsWithReview.filter((item) => item.reviewTime > now);
   upcomingWords.sort((a, b) => a.reviewTime - b.reviewTime);
 
-  const groupDueWords = dueWords.filter((item) => item.group === currentGroup);
+  const groupStrictlyDue = strictlyDueWords.filter((item) => item.group === currentGroup);
+  const totalSessionDue = strictlyDueWords.length + lookaheadWords.length;
 
-  if (dueWords.length > 0) {
+  // Status is 'due' only if there are words that have strictly passed their deadline
+  if (strictlyDueWords.length > 0) {
     return {
       status: 'due',
-      dueCount: dueWords.length,
-      groupDueCount: groupDueWords.length,
+      dueCount: totalSessionDue,
+      strictlyDueCount: strictlyDueWords.length,
+      groupDueCount: groupStrictlyDue.length,
       nearestTimestamp: null,
       upcomingWordsCount: 0,
       nearestGroup: null,
+      canEarlyReview: false,
+      earlyReviewCount: lookaheadWords.length,
     };
   }
 
@@ -557,32 +566,38 @@ export function getNextReviewInfo(storageData, currentGroup, vocabList, lookahea
     );
     return {
       status: 'upcoming',
-      dueCount: 0,
+      dueCount: lookaheadWords.length,
+      strictlyDueCount: 0,
       groupDueCount: 0,
       nearestTimestamp: nearest.reviewTime,
       upcomingWordsCount: batchWords.length,
       nearestGroup: nearest.group,
       totalScheduledCount: upcomingWords.length,
+      canEarlyReview: lookaheadWords.length > 0,
+      earlyReviewCount: lookaheadWords.length,
     };
   }
 
   return {
     status: 'none',
     dueCount: 0,
+    strictlyDueCount: 0,
     groupDueCount: 0,
     nearestTimestamp: null,
     upcomingWordsCount: 0,
     nearestGroup: null,
+    canEarlyReview: false,
+    earlyReviewCount: 0,
   };
 }
 
-function startCountdownTimer(targetTimestamp, onTick, onComplete, lookaheadMs = SRS_CONFIG.due_lookahead_ms) {
+function startCountdownTimer(targetTimestamp, onTick, onComplete) {
   stopCountdownTimer();
   if (!targetTimestamp) return;
 
   function tick() {
     const remaining = targetTimestamp - Date.now();
-    if (remaining <= (lookaheadMs || 0)) {
+    if (remaining <= 0) {
       stopCountdownTimer();
       onComplete();
     } else {
@@ -1235,10 +1250,13 @@ export function renderGroupDashboard({
   } else if (reviewInfo.status === 'upcoming') {
     countdownInitialVal = formatCountdownTime(reviewInfo.nearestTimestamp - Date.now());
     badgeClass = 'widget-badge badge-countdown';
-    badgeText = 'Đang đếm ngược';
+    badgeText = reviewInfo.canEarlyReview ? 'Sắp đến hạn' : 'Đang đếm ngược';
     const formattedTarget = formatTargetDateTime(reviewInfo.nearestTimestamp);
     const gNote = reviewInfo.nearestGroup === group ? 'Group này' : `Group ${reviewInfo.nearestGroup}`;
-    subtextHtml = `Hạn ôn tiếp theo: <strong>${formattedTarget}</strong> (${reviewInfo.upcomingWordsCount} từ ${gNote}).`;
+    const earlyNote = reviewInfo.canEarlyReview
+      ? ` &bull; <em>Có ${reviewInfo.earlyReviewCount} từ có thể ôn sớm</em>`
+      : '';
+    subtextHtml = `Hạn ôn tiếp theo: <strong>${formattedTarget}</strong> (${reviewInfo.upcomingWordsCount} từ ${gNote})${earlyNote}.`;
   }
 
   stage.innerHTML = `
@@ -1300,6 +1318,8 @@ export function renderGroupDashboard({
             ${
               reviewInfo.status === 'due'
                 ? `<button id="btn-widget-review-due" class="btn-widget-cta">${ICONS.arrowRight} <span>Ôn tập ngay ${reviewInfo.dueCount} từ tới hạn</span></button>`
+                : reviewInfo.canEarlyReview
+                ? `<button id="btn-widget-review-due" class="btn-widget-cta">${ICONS.arrowRight} <span>Ôn sớm ngay ${reviewInfo.earlyReviewCount} từ (trong 15p tới)</span></button>`
                 : ''
             }
           </div>
