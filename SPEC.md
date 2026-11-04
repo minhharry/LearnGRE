@@ -260,7 +260,10 @@ Tối ưu cho việc học cấp tốc với chu kỳ tính theo Giờ ở cấp
 | **Level 1** | Mới nạp / Đang yếu (`learning`) | **4 giờ** *(Ôn lại trong ngày)* | Đúng + *Fluent Recall* + đã đến hạn -> **Lên Level 2** | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ Level 1 (4 giờ)<br>• Sai -> Giữ Level 1 (Reset về **1 giờ**) |
 | **Level 2** | Đang củng cố (`learning`) | **24 giờ (1 ngày)** | Đúng + *Fluent Recall* + đã đến hạn -> **Lên Level 3** | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ Level 2 (24 giờ)<br>• Sai -> **Giáng về Level 1** (4 giờ) |
 | **Level 3** | Nắm vững (`reviewing`) | **48 giờ (2 ngày)** | Đúng + *Fluent Recall* + đã đến hạn + đạt chỉ tiêu `consecutive_correct` -> **Lên Level 4** | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ Level 3<br>• Sai -> **Giáng về Level 1** (4 giờ) |
-| **Level 4** | Thành thạo (`mastered`) | **96 giờ (4 ngày)** | Đúng + *Fluent Recall* + đã đến hạn -> Gia hạn Level 4 (+7 ngày / 168h) | • Đúng nhưng *Hesitant* hoặc chưa đến hạn -> Giữ nguyên Level 4 (giữ chu kỳ hiện tại)<br>• Sai -> **Giáng về Level 2** (24 giờ) |
+| **Level 4** | Thành thạo (`mastered`) | **96 giờ (4 ngày)** | Đúng + *Fluent Recall* + đã đến hạn -> Gia hạn Level 4 (+7 ngày / 168h) | • Đúng nhưng *Hesitant* -> Giữ nguyên Level 4, cho ôn lại sau **1 giờ** (`penalty_reset_hours`)<br>• Chưa đến hạn -> Giữ nguyên Level 4<br>• Sai -> **Giáng về Level 2** (24 giờ) |
+
+> [!NOTE]
+> **Cửa sổ Tổng ôn đón đầu (Lookahead Window):** Hệ thống tổng ôn tập (`all_due`) và phân luồng ôn tập áp dụng cửa sổ đón đầu 15 phút (`due_lookahead_ms: 15 * 60 * 1000`). Toàn bộ các từ có hạn ôn trong vòng 15 phút tới sẽ được gom chung vào phiên tổng ôn để tránh việc hoàn thành phiên học lại lập tức phát sinh từ tới hạn.
 
 ### 6.2. Quy tắc Sổ tay Câu sai Tự động (Error Notebook)
 

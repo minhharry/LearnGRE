@@ -4,6 +4,8 @@
  * System: LearnGRE Zero-Friction Desktop-Web App
  */
 
+import { SRS_CONFIG } from './srs.js';
+
 export const STORAGE_KEY = 'GRE_PROGRESS_DATA';
 export const BACKUP_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
@@ -302,31 +304,32 @@ export function importProgressJson(jsonString) {
 }
 
 /**
- * Returns all word items from vocabList that are currently due for SRS review across all groups.
+ * Returns all word items from vocabList that are currently due for SRS review across all groups,
+ * including words arriving within the lookahead window (default: 15 minutes).
  */
-export function getDueWordsAcrossAllGroups(vocabList, storageData) {
-  const now = Date.now();
+export function getDueWordsAcrossAllGroups(vocabList, storageData, lookaheadMs = SRS_CONFIG.due_lookahead_ms) {
+  const cutoff = Date.now() + (lookaheadMs || 0);
   if (!storageData || !storageData.words || !Array.isArray(vocabList)) return [];
   return vocabList.filter((word) => {
     const record = storageData.words[word.id];
     if (!record || !record.level || record.level <= 0 || !record.next_review) return false;
     const reviewTime = new Date(record.next_review).getTime();
-    return !isNaN(reviewTime) && reviewTime <= now;
+    return !isNaN(reviewTime) && reviewTime <= cutoff;
   });
 }
 
 /**
- * Counts total words due for SRS review across all groups.
+ * Counts total words due for SRS review across all groups within the lookahead window (default: 15 minutes).
  */
-export function countDueWords(storageData) {
-  const now = Date.now();
+export function countDueWords(storageData, lookaheadMs = SRS_CONFIG.due_lookahead_ms) {
+  const cutoff = Date.now() + (lookaheadMs || 0);
   let count = 0;
   if (!storageData || !storageData.words) return 0;
   for (const wordId of Object.keys(storageData.words)) {
     const record = storageData.words[wordId];
     if (record && record.level > 0 && record.next_review) {
       const reviewTime = new Date(record.next_review).getTime();
-      if (!isNaN(reviewTime) && reviewTime <= now) {
+      if (!isNaN(reviewTime) && reviewTime <= cutoff) {
         count++;
       }
     }

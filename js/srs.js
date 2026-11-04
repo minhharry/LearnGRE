@@ -13,6 +13,7 @@ export const SRS_CONFIG = {
   },
   level_4_extension_hours: 168, // 7 days
   penalty_reset_hours: 1,
+  due_lookahead_ms: 15 * 60 * 1000, // 15 minutes lookahead window for due reviews
   mastery_consecutive_correct: 3,
   fluent_recall_multiplier: 1.8,
   blind_tap_threshold_seconds: 1.2,
@@ -105,8 +106,10 @@ export function evaluateWordAnswer(
       // Check Spaced Promotion eligibility:
       // Promotion to next level requires:
       // 1. Not already promoted in the current session
-      // 2. Either word is Level 0 (first encounter) OR current time >= next_review (due for formal review)
-      const isDueForReview = !currentRecord.next_review || new Date() >= new Date(currentRecord.next_review);
+      // 2. Either word is Level 0 (first encounter) OR current time + lookahead >= next_review (due for formal review)
+      const reviewCutoffMs = Date.now() + (SRS_CONFIG.due_lookahead_ms || 0);
+      const isDueForReview =
+        !currentRecord.next_review || reviewCutoffMs >= new Date(currentRecord.next_review).getTime();
       const canPromote = !hasBeenPromotedThisSession && (currentLevel === 0 || isDueForReview);
 
       if (currentLevel === 0) {
@@ -154,7 +157,9 @@ export function evaluateWordAnswer(
       }
     } else {
       // Hesitant or Blind Tap: Keep Level, queue for re-test, reset next_review per Leitner table
-      const isDueForReview = !currentRecord.next_review || new Date() >= new Date(currentRecord.next_review);
+      const reviewCutoffMs = Date.now() + (SRS_CONFIG.due_lookahead_ms || 0);
+      const isDueForReview =
+        !currentRecord.next_review || reviewCutoffMs >= new Date(currentRecord.next_review).getTime();
       retestNeeded = true;
       if (currentLevel === 0) {
         currentRecord.level = 1;
@@ -173,8 +178,10 @@ export function evaluateWordAnswer(
         if (isDueForReview) {
           currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.intervals_hours.level_3);
         }
+      } else if (currentLevel === 4) {
+        // Hesitant Level 4: maintain Level 4, schedule re-review in 1 hour
+        currentRecord.next_review = getFutureIsoTimestamp(SRS_CONFIG.penalty_reset_hours);
       }
-      // Level 4: maintain current cycle
     }
   } else {
     // Incorrect answer

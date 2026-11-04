@@ -5,6 +5,7 @@
  */
 
 import { countDueWords } from './storage.js';
+import { SRS_CONFIG } from './srs.js';
 
 // Clean SVG icon definitions (Strictly no emojis)
 export const ICONS = {
@@ -508,10 +509,12 @@ export function formatTargetDateTime(timestamp) {
 }
 
 /**
- * Inspects storageData to calculate SRS review deadlines.
+ * Inspects storageData to calculate SRS review deadlines,
+ * taking into account the lookahead window (default: 15 minutes).
  */
-export function getNextReviewInfo(storageData, currentGroup, vocabList) {
+export function getNextReviewInfo(storageData, currentGroup, vocabList, lookaheadMs = SRS_CONFIG.due_lookahead_ms) {
   const now = Date.now();
+  const cutoff = now + (lookaheadMs || 0);
   const wordsWithReview = [];
 
   for (const w of vocabList) {
@@ -530,8 +533,8 @@ export function getNextReviewInfo(storageData, currentGroup, vocabList) {
     }
   }
 
-  const dueWords = wordsWithReview.filter((item) => item.reviewTime <= now);
-  const upcomingWords = wordsWithReview.filter((item) => item.reviewTime > now);
+  const dueWords = wordsWithReview.filter((item) => item.reviewTime <= cutoff);
+  const upcomingWords = wordsWithReview.filter((item) => item.reviewTime > cutoff);
   upcomingWords.sort((a, b) => a.reviewTime - b.reviewTime);
 
   const groupDueWords = dueWords.filter((item) => item.group === currentGroup);
@@ -573,13 +576,13 @@ export function getNextReviewInfo(storageData, currentGroup, vocabList) {
   };
 }
 
-function startCountdownTimer(targetTimestamp, onTick, onComplete) {
+function startCountdownTimer(targetTimestamp, onTick, onComplete, lookaheadMs = SRS_CONFIG.due_lookahead_ms) {
   stopCountdownTimer();
   if (!targetTimestamp) return;
 
   function tick() {
     const remaining = targetTimestamp - Date.now();
-    if (remaining <= 0) {
+    if (remaining <= (lookaheadMs || 0)) {
       stopCountdownTimer();
       onComplete();
     } else {
@@ -1425,8 +1428,7 @@ export function renderGroupDashboard({
           allDueBtn.classList.add('has-due');
           const pill = allDueBtn.querySelector('.due-badge-pill');
           if (pill) {
-            const currentVal = parseInt(pill.textContent, 10) || 0;
-            pill.textContent = currentVal + 1;
+            pill.textContent = countDueWords(storageData);
           }
         }
       }

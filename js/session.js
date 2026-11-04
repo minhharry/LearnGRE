@@ -6,6 +6,7 @@
 
 import { selectFlashDistractors, shuffleArray } from './distractor.js';
 import { ensureWordRecord, getDueWordsAcrossAllGroups } from './storage.js';
+import { SRS_CONFIG } from './srs.js';
 
 export class SessionManager {
   /**
@@ -94,10 +95,11 @@ export class SessionManager {
     const reviewPool = [];
     const learningPool = [];
     const newWordsPool = [];
+    const reviewCutoffIso = new Date(Date.now() + (SRS_CONFIG.due_lookahead_ms || 0)).toISOString();
 
     for (const word of groupWords) {
       const rec = ensureWordRecord(this.storageData, word.id);
-      if (rec.flagged_error || (rec.next_review && rec.next_review <= nowIso)) {
+      if (rec.flagged_error || (rec.next_review && rec.next_review <= reviewCutoffIso)) {
         reviewPool.push(word);
       } else if (rec.level === 1 || rec.level === 2) {
         learningPool.push(word);
@@ -113,7 +115,7 @@ export class SessionManager {
       const priorWords = this.allVocab.filter((w) => w.group < this.group);
       for (const word of priorWords) {
         const rec = this.storageData.words[word.id];
-        if (rec && (rec.flagged_error || (rec.next_review && rec.next_review <= nowIso))) {
+        if (rec && (rec.flagged_error || (rec.next_review && rec.next_review <= reviewCutoffIso))) {
           priorReviewPool.push(word);
         }
       }
