@@ -310,6 +310,14 @@
   text-align: left;
 }
 
+.option-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
 .option-card-text {
   display: flex;
   align-items: baseline;
@@ -341,6 +349,15 @@
   font-weight: 400;
 }
 
+.option-card-def {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+  font-style: italic;
+  font-weight: 400;
+}
+
 /* Option Instant Feedback States */
 .option-card.is-correct {
   background-color: var(--success-bg) !important;
@@ -353,7 +370,8 @@
   color: var(--success-text) !important;
 }
 
-.option-card.is-correct .option-card-gloss {
+.option-card.is-correct .option-card-gloss,
+.option-card.is-correct .option-card-def {
   color: var(--success-text) !important;
   opacity: 0.9;
 }
@@ -376,7 +394,8 @@
   color: #3fb950 !important;
 }
 
-[data-theme="dark"] .option-card.is-correct .option-card-gloss {
+[data-theme="dark"] .option-card.is-correct .option-card-gloss,
+[data-theme="dark"] .option-card.is-correct .option-card-def {
   color: #89d185 !important;
 }
 
@@ -395,6 +414,27 @@
 
 .option-card.is-incorrect .option-card-label {
   color: var(--error-text) !important;
+}
+
+.option-card.is-incorrect .option-card-gloss,
+.option-card.is-incorrect .option-card-def {
+  color: var(--error-text) !important;
+  opacity: 0.9;
+}
+
+[data-theme="dark"] .option-card.is-incorrect {
+  background-color: rgba(248, 81, 73, 0.15) !important;
+  border-color: #f85149 !important;
+  color: #f85149 !important;
+}
+
+[data-theme="dark"] .option-card.is-incorrect .option-card-label {
+  color: #f85149 !important;
+}
+
+[data-theme="dark"] .option-card.is-incorrect .option-card-gloss,
+[data-theme="dark"] .option-card.is-incorrect .option-card-def {
+  color: #ff7b72 !important;
 }
 
 .option-card.is-incorrect .keycap {

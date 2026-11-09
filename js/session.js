@@ -245,20 +245,20 @@ export class SessionManager {
       {
         id: targetWord.id,
         word: targetWord.word,
-        text: targetWord.vi_gloss || (targetWord.definitions && targetWord.definitions[0]) || '',
+        text: targetWord.vi_gloss || (targetWord.definitions && targetWord.definitions[0]) || targetWord.definition || '',
         isCorrect: true,
         pos: targetWord.pos,
         vi_gloss: targetWord.vi_gloss || '',
-        definition: (targetWord.definitions && targetWord.definitions[0]) || '',
+        definition: (targetWord.definitions && targetWord.definitions[0]) || targetWord.definition || '',
       },
       ...distractors.map((d) => ({
         id: d.id,
         word: d.word,
-        text: d.vi_gloss || (d.definitions && d.definitions[0]) || '',
+        text: d.vi_gloss || (d.definitions && d.definitions[0]) || d.definition || '',
         isCorrect: false,
         pos: d.pos,
         vi_gloss: d.vi_gloss || '',
-        definition: (d.definitions && d.definitions[0]) || '',
+        definition: (d.definitions && d.definitions[0]) || d.definition || '',
       })),
     ];
 

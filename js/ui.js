@@ -1833,14 +1833,24 @@ export function renderFlashRecallQuestion({
 
         <div class="options-grid single-column" id="flash-options-container">
           ${question.options
-            .map(
-              (opt) => `
-            <div class="option-card" data-key="${opt.keycap}" data-word="${opt.word}" data-correct="${opt.isCorrect}">
+            .map((opt) => {
+              const viText = opt.vi_gloss || opt.text || '';
+              const enDef = opt.definition || (opt.definitions && opt.definitions[0]) || '';
+              const hasDistinctEn = Boolean(
+                enDef &&
+                viText &&
+                enDef.trim().toLowerCase() !== viText.trim().toLowerCase()
+              );
+              return `
+            <div class="option-card flash-option-card" data-key="${opt.keycap}" data-word="${opt.word}" data-correct="${opt.isCorrect}">
               <span class="keycap">${opt.keycap}</span>
-              <div class="option-card-label">${opt.text}</div>
+              <div class="option-card-content">
+                <div class="option-card-label">${viText}</div>
+                ${hasDistinctEn ? `<div class="option-card-def">${enDef}</div>` : ''}
+              </div>
             </div>
-          `
-            )
+          `;
+            })
             .join('')}
         </div>
       </div>
@@ -2247,6 +2257,8 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
     : `<span class="badge badge-red">Chưa chính xác</span>`;
 
   const displayAnswerWord = question.targetWord ? question.targetWord.word : (question.promptWord || '');
+  const targetViGloss = (question.targetWord && question.targetWord.vi_gloss) || '';
+  const targetEnDef = (question.targetWord && question.targetWord.definitions && question.targetWord.definitions[0]) || (question.targetWord && question.targetWord.definition) || '';
 
   // 1 Example sentence + meaning for the target word
   const wordExample = example || question.example || (question.targetWord && question.targetWord.example) || null;
@@ -2359,6 +2371,14 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
           </button>
         </div>
       </div>
+
+      ${(targetViGloss || targetEnDef) ? `
+        <div class="rationale-answer-summary" style="margin-top: 8px; margin-bottom: 10px; font-size: 13.5px; line-height: 1.45; color: var(--text-body);">
+          ${targetViGloss ? `<span style="font-weight: 600; color: var(--accent-color);">${targetViGloss}</span>` : ''}
+          ${targetViGloss && targetEnDef ? `<span style="color: var(--text-muted); margin: 0 5px;">—</span>` : ''}
+          ${targetEnDef ? `<span style="color: var(--text-muted); font-style: italic;">${targetEnDef}</span>` : ''}
+        </div>
+      ` : ''}
 
       ${exampleHtml}
 

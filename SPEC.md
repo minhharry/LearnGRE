@@ -69,7 +69,7 @@ Loại bỏ toàn bộ các nút bấm xác nhận rườm rà ("Submit", "Chắ
 | Loại câu hỏi | Cơ chế Tương tác & Chấm điểm Tự động | Hành động Chuyển câu |
 | --- | --- | --- |
 | **1. Speed Match** (Ghép 4 cặp từ - nghĩa) | Nhấp chuột hoặc bấm phím: Cho phép chọn 2 chiều (Từ vựng -> Nghĩa HOẶC Nghĩa -> Từ vựng). Phím `1-4` chọn Từ vựng, `Q, W, E, R` chọn Nghĩa. Đúng: Cặp thẻ mờ đi (`opacity: 0.2`). Sai: Nháy đỏ `200ms` và hủy chọn. | Hoàn tất 4 cặp: Tự động chuyển câu tiếp theo sau `350ms`. |
-| **2. Flash Recall** (Trắc nghiệm nghĩa nhanh, 4 lựa chọn) | Hiển thị 1 từ vựng cùng 4 phương án định nghĩa. **Bấm chọn 1 đáp án là chấm điểm ngay lập tức.** | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
+| **2. Flash Recall** (Trắc nghiệm nghĩa nhanh, 4 lựa chọn) | Hiển thị 1 từ vựng cùng 4 phương án định nghĩa (hiển thị song song cả nghĩa tiếng Việt và định nghĩa tiếng Anh). **Bấm chọn 1 đáp án là chấm điểm ngay lập tức.** | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
 | **3. Reverse Flash Recall** (Trắc nghiệm nhận diện từ vựng ngược, 4 lựa chọn) | Hiển thị nghĩa của từ vựng cùng 4 phương án là các từ tiếng Anh ngẫu nhiên cùng từ loại. **Bấm chọn 1 đáp án là chấm điểm ngay lập tức.** | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
 | **4. Text Completion (TC)** (1 chỗ trống, 4 lựa chọn) | **Single-Action Trigger:** Click chuột hoặc bấm phím `1-4`, hệ thống khóa đáp án, chấm điểm, điền từ vào chỗ trống và hiển thị rationale phân tích ngữ cảnh. | Bấm `Space`, `Enter` hoặc click nút "Tiếp tục". |
 
