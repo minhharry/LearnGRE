@@ -65,13 +65,23 @@ export class SessionManager {
 
       // Warm-up: 1 Speed Match (4 pairs) if >= 4 words
       if (selectedWords.length >= 4) {
-        this.queue.push(this.createSpeedMatchQuestion(selectedWords.slice(0, 4)));
-      }
+        const warmUpWords = selectedWords.slice(0, 4);
+        this.queue.push(this.createSpeedMatchQuestion(warmUpWords));
 
-      // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall) for ALL due words
-      for (let i = 0; i < selectedWords.length; i++) {
-        const word = selectedWords[i];
-        this.queue.push(this.createRandomQuestion(word));
+        // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall) for ALL due words
+        // Move warm-up words to the end of core questions to avoid immediate recency bias
+        const remainingWords = selectedWords.slice(4);
+        const coreWords = [...remainingWords, ...shuffleArray(warmUpWords)];
+        for (let i = 0; i < coreWords.length; i++) {
+          const word = coreWords[i];
+          this.queue.push(this.createRandomQuestion(word));
+        }
+      } else {
+        // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall) for ALL due words
+        for (let i = 0; i < selectedWords.length; i++) {
+          const word = selectedWords[i];
+          this.queue.push(this.createRandomQuestion(word));
+        }
       }
       return;
     }
@@ -194,12 +204,21 @@ export class SessionManager {
     if (targetWords.length >= 4) {
       const warmUpWords = targetWords.slice(0, 4);
       this.queue.push(this.createSpeedMatchQuestion(warmUpWords));
-    }
 
-    // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall)
-    for (let i = 0; i < targetWords.length; i++) {
-      const word = targetWords[i];
-      this.queue.push(this.createRandomQuestion(word));
+      // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall)
+      // Move warm-up words to the end of the session to test delayed recall instead of immediate recency
+      const remainingTargetWords = targetWords.slice(4);
+      const coreWords = [...remainingTargetWords, ...shuffleArray(warmUpWords)];
+      for (let i = 0; i < coreWords.length; i++) {
+        const word = coreWords[i];
+        this.queue.push(this.createRandomQuestion(word));
+      }
+    } else {
+      // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall)
+      for (let i = 0; i < targetWords.length; i++) {
+        const word = targetWords[i];
+        this.queue.push(this.createRandomQuestion(word));
+      }
     }
   }
 

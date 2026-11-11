@@ -209,7 +209,7 @@ Không áp đặt 4 nhịp sóng cứng nhắc. Thuật toán phân bổ câu h�
    * **Active Learning Pool:** Các từ đang ở Level 1 hoặc Level 2 thuộc Group hiện tại.
    * **New Words Pool:** Các từ mới tinh (Level 0) thuộc Group hiện tại.
 2. **Cơ chế Điều phối Dạng câu hỏi:**
-   * **Làm nóng (Warm-up):** Bắt đầu bằng 1 bài Speed Match (ghép 4 cặp) hoặc 2 câu Flash Recall để kích hoạt trí nhớ nhanh với các từ mới nạp.
+   * **Làm nóng (Warm-up):** Bắt đầu bằng 1 bài Speed Match (ghép 4 cặp) hoặc 2 câu Flash Recall để kích hoạt trí nhớ nhanh với các từ mới nạp. 4 từ xuất hiện trong bài Speed Match này được tự động điều phối kiểm tra ở cuối phiên học (thay vì ngay đầu) nhằm kiểm tra trí nhớ trễ (delayed recall), tránh hiện tượng nhớ tức thì do hiệu ứng vừa gặp (recency bias).
    * **Trọng tâm (Core):** Phân bổ ngẫu nhiên 1 trong 3 dạng câu hỏi (Text Completion đọc hiểu ngữ cảnh sâu, Flash Recall phản xạ từ -> nghĩa, hoặc Reverse Flash Recall phản xạ nghĩa -> từ) cho mỗi từ trong phiên.
    * **Vòng lặp Gỡ lỗi (Redemption Loop):** Xuất hiện ở cuối phiên nếu có câu trả lời sai. Hệ thống chọn một biến thể câu hỏi TC mới hoặc bài tập recall để người học sửa sai ngay lập tức trước khi hoàn tất phiên.
 3. **Màn hình Tổng kết Phiên (Session Summary):**
