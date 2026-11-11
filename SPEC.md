@@ -60,7 +60,9 @@
     * **Sai (Error):** Nền `#fef2f2`, viền `#ef4444`, chữ `#991b1b`.
   * **Accent Color:** Xanh dương `#3b82f6` (chuyển Cam `#f97316` khi đạt Streak >= 5).
   * **Theme Toggle:** Nút chuyển đổi nhanh theme có mặt trên cả Top-bar và Header trong phiên học (`session-theme-btn`).
-* **Thanh tiến độ phiên học:** Segmented Progress Bar hiển thị trực quan các câu trong phiên kèm bộ đếm Streak.
+* **Thanh tiến độ phiên học:** Cơ chế Thích ứng Linh hoạt (Adaptive Hybrid Progress Bar):
+  * Khi $\le 30$ câu: Segmented Bar chia ô từng câu với khoảng cách co giãn động, phản hồi màu xanh/đỏ tức thì.
+  * Khi $> 30$ câu (Tổng ôn tới hạn, Review lớn): Continuous Stacked Bar liền mạch hiển thị đa sắc (Xanh lá đúng / Đỏ sai / Active indicator) cùng chip thống kê mini `✓ Đúng • ✗ Sai`, không bao giờ bị co rúm hay biến mất.
 
 ### 2.2. Cơ chế Tương tác Tức thời (Auto-Submit & Zero-Click Submit)
 

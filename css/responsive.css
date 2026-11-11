@@ -190,6 +190,18 @@
     width: auto;
   }
 
+  .session-progress-track.is-continuous {
+    gap: 0;
+    min-width: 60px;
+    height: 6px;
+  }
+
+  .session-stats-chip {
+    padding: 1px 5px;
+    font-size: 10px;
+    gap: 3px;
+  }
+
   .progress-segment {
     height: 5px;
     flex: 1;
@@ -811,6 +823,12 @@
   }
 }
 
+
+@media (max-width: 540px) {
+  .session-stats-chip {
+    display: none;
+  }
+}
 
 @media (max-width: 359px) {
   .overview-kpi-grid {

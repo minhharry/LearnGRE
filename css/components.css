@@ -70,6 +70,74 @@
   flex: 1;
   max-width: 480px;
   margin: 0 20px;
+  min-width: 0;
+}
+
+/* Continuous Stacked Progress Bar (for sessions with > 30 questions) */
+.session-progress-track.is-continuous {
+  gap: 0;
+  height: 6px;
+  background-color: var(--border-color);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+  align-items: stretch;
+}
+
+.session-progress-track.is-continuous .continuous-fill {
+  height: 100%;
+  transition: width var(--transition-fast) ease-out;
+}
+
+.session-progress-track.is-continuous .fill-correct {
+  background-color: var(--success-border);
+}
+
+.session-progress-track.is-continuous .fill-incorrect {
+  background-color: var(--error-border);
+}
+
+.session-progress-track.is-continuous .fill-active {
+  background-color: var(--accent-color);
+  opacity: 0.9;
+}
+
+/* Mini Stats Badge */
+.session-stats-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  line-height: 1.2;
+  user-select: none;
+}
+
+.session-stats-chip .stat-icon {
+  font-weight: 800;
+  margin-right: 2px;
+}
+
+.session-stats-chip .stat-green {
+  color: var(--success-border);
+  display: inline-flex;
+  align-items: center;
+}
+
+.session-stats-chip .stat-red {
+  color: var(--error-border);
+  display: inline-flex;
+  align-items: center;
+}
+
+.session-stats-chip .stat-divider {
+  color: var(--border-color);
+  font-size: 10px;
 }
 
 .progress-segment {

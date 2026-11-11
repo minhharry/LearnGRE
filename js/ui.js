@@ -1594,6 +1594,7 @@ export function applyStreakAccent(streak) {
 
 /**
  * Renders Session Progress Header with correct / incorrect segment status.
+ * Uses Adaptive Hybrid Mode: Segmented Bar if total <= 30, Continuous Stacked Bar if total > 30.
  */
 export function renderSessionProgressHeader({ current, total, isRedemption, streak, results = [], theme = 'dark', isAllDue = false, autoAudio = true }) {
   const progressHeader = document.getElementById('session-progress-header');
@@ -1602,22 +1603,57 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
   progressHeader.style.display = 'flex';
   applyStreakAccent(streak);
 
-  let segmentsHtml = '';
-  for (let i = 0; i < total; i++) {
-    let statusClass = '';
-    if (i === current - 1) {
-      statusClass = 'active';
-    } else if (i < current - 1) {
-      if (results[i] && results[i].isCorrect === false) {
-        statusClass = 'incorrect';
-      } else {
-        statusClass = 'correct';
-      }
-    }
-    segmentsHtml += `<div class="progress-segment ${statusClass}" id="seg-${i}"></div>`;
-  }
-
   const isDark = theme === 'dark';
+  const MAX_SEGMENTS_THRESHOLD = 30;
+  const isContinuous = total > MAX_SEGMENTS_THRESHOLD;
+
+  let trackHtml = '';
+  let statsChipHtml = '';
+
+  if (isContinuous) {
+    const correctCount = results.filter((r) => r && r.isCorrect).length;
+    const incorrectCount = results.filter((r) => r && r.isCorrect === false).length;
+    const correctPercent = total > 0 ? (correctCount / total) * 100 : 0;
+    const incorrectPercent = total > 0 ? (incorrectCount / total) * 100 : 0;
+    const activePercent = total > 0 ? Math.min((1 / total) * 100, Math.max(0, 100 - correctPercent - incorrectPercent)) : 0;
+
+    statsChipHtml = `
+      <div class="session-stats-chip" id="session-stats-chip" title="Đúng: ${correctCount} | Cần gỡ: ${incorrectCount}">
+        <span class="stat-green"><span class="stat-icon">✓</span><span id="stat-correct-count">${correctCount}</span></span>
+        <span class="stat-divider">•</span>
+        <span class="stat-red"><span class="stat-icon">✗</span><span id="stat-incorrect-count">${incorrectCount}</span></span>
+      </div>
+    `;
+
+    trackHtml = `
+      <div class="session-progress-track is-continuous" id="session-progress-continuous" data-total="${total}" data-correct="${correctCount}" data-incorrect="${incorrectCount}" data-current="${current}" title="Tiến độ: ${Math.round((current / total) * 100)}%">
+        <div class="continuous-fill fill-correct" id="continuous-fill-correct" style="width: ${correctPercent}%;"></div>
+        <div class="continuous-fill fill-incorrect" id="continuous-fill-incorrect" style="width: ${incorrectPercent}%;"></div>
+        <div class="continuous-fill fill-active" id="continuous-fill-active" style="width: ${activePercent}%;"></div>
+      </div>
+    `;
+  } else {
+    let segmentsHtml = '';
+    for (let i = 0; i < total; i++) {
+      let statusClass = '';
+      if (i === current - 1) {
+        statusClass = 'active';
+      } else if (i < current - 1) {
+        if (results[i] && results[i].isCorrect === false) {
+          statusClass = 'incorrect';
+        } else {
+          statusClass = 'correct';
+        }
+      }
+      segmentsHtml += `<div class="progress-segment ${statusClass}" id="seg-${i}"></div>`;
+    }
+    const dynamicGap = total > 20 ? '2px' : (total > 12 ? '3px' : '4px');
+    trackHtml = `
+      <div class="session-progress-track" style="gap: ${dynamicGap};">
+        ${segmentsHtml}
+      </div>
+    `;
+  }
 
   progressHeader.innerHTML = `
     <div class="session-progress-left">
@@ -1625,10 +1661,9 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
       ${isAllDue ? '<span class="badge badge-blue" style="font-size: 11px; font-weight: 700;">Tổng ôn tới hạn</span>' : ''}
       ${isRedemption ? '<span class="badge badge-blue" style="font-size: 10.5px;">Gỡ lỗi</span>' : ''}
       <span class="session-counter-text">Câu ${current}/${total}</span>
+      ${statsChipHtml}
     </div>
-    <div class="session-progress-track">
-      ${segmentsHtml}
-    </div>
+    ${trackHtml}
     <div class="session-progress-right">
       <button id="session-audio-btn" class="icon-btn session-theme-toggle" title="${autoAudio ? 'Tắt tự động phát âm' : 'Bật tự động phát âm'}">
         ${autoAudio ? ICONS.audio : ICONS.audioMuted}
@@ -1645,12 +1680,46 @@ export function renderSessionProgressHeader({ current, total, isRedemption, stre
 
 /**
  * Updates a specific progress segment when an answer is evaluated.
+ * Seamlessly handles both Segmented Mode and Continuous Stacked Mode.
  */
 export function updateProgressSegment(index, isCorrect) {
+  // 1. Update in Segmented Mode
   const seg = document.getElementById(`seg-${index}`);
   if (seg) {
     seg.classList.remove('active');
     seg.classList.add(isCorrect ? 'correct' : 'incorrect');
+  }
+
+  // 2. Update in Continuous Stacked Mode
+  const continuousTrack = document.getElementById('session-progress-continuous');
+  if (continuousTrack) {
+    const total = parseInt(continuousTrack.dataset.total, 10) || 1;
+    let correctCount = parseInt(continuousTrack.dataset.correct, 10) || 0;
+    let incorrectCount = parseInt(continuousTrack.dataset.incorrect, 10) || 0;
+
+    if (isCorrect) {
+      correctCount += 1;
+      continuousTrack.dataset.correct = correctCount;
+    } else {
+      incorrectCount += 1;
+      continuousTrack.dataset.incorrect = incorrectCount;
+    }
+
+    const correctPercent = total > 0 ? (correctCount / total) * 100 : 0;
+    const incorrectPercent = total > 0 ? (incorrectCount / total) * 100 : 0;
+
+    const fillCorrect = document.getElementById('continuous-fill-correct');
+    const fillIncorrect = document.getElementById('continuous-fill-incorrect');
+    const fillActive = document.getElementById('continuous-fill-active');
+
+    if (fillCorrect) fillCorrect.style.width = `${correctPercent}%`;
+    if (fillIncorrect) fillIncorrect.style.width = `${incorrectPercent}%`;
+    if (fillActive) fillActive.style.width = '0%';
+
+    const statCorrect = document.getElementById('stat-correct-count');
+    const statIncorrect = document.getElementById('stat-incorrect-count');
+    if (statCorrect) statCorrect.textContent = correctCount;
+    if (statIncorrect) statIncorrect.textContent = incorrectCount;
   }
 }
 
@@ -2567,16 +2636,37 @@ export function renderNewWordPreviewScreen({
 
   if (progressHeader) {
     progressHeader.style.display = 'flex';
-    let segmentsHtml = '';
-    for (let i = 0; i < totalWords; i++) {
-      let statusClass = '';
-      if (i === currentIndex) {
-        statusClass = 'active';
-      } else if (i < currentIndex) {
-        statusClass = 'correct';
+    const MAX_SEGMENTS_THRESHOLD = 30;
+    let trackHtml = '';
+
+    if (totalWords > MAX_SEGMENTS_THRESHOLD) {
+      const completedPercent = totalWords > 0 ? (currentIndex / totalWords) * 100 : 0;
+      const currentCardPercent = totalWords > 0 ? Math.min((1 / totalWords) * 100, Math.max(0, 100 - completedPercent)) : 0;
+      trackHtml = `
+        <div class="session-progress-track is-continuous" title="Tiến độ: ${Math.round(((currentIndex + 1) / totalWords) * 100)}%">
+          <div class="continuous-fill fill-correct" style="width: ${completedPercent}%;"></div>
+          <div class="continuous-fill fill-active" style="width: ${currentCardPercent}%;"></div>
+        </div>
+      `;
+    } else {
+      let segmentsHtml = '';
+      for (let i = 0; i < totalWords; i++) {
+        let statusClass = '';
+        if (i === currentIndex) {
+          statusClass = 'active';
+        } else if (i < currentIndex) {
+          statusClass = 'correct';
+        }
+        segmentsHtml += `<div class="progress-segment ${statusClass}" id="prev-seg-${i}"></div>`;
       }
-      segmentsHtml += `<div class="progress-segment ${statusClass}" id="prev-seg-${i}"></div>`;
+      const dynamicGap = totalWords > 20 ? '2px' : (totalWords > 12 ? '3px' : '4px');
+      trackHtml = `
+        <div class="session-progress-track" style="gap: ${dynamicGap};">
+          ${segmentsHtml}
+        </div>
+      `;
     }
+
     const isDark = theme === 'dark';
     progressHeader.innerHTML = `
       <div class="session-progress-left">
@@ -2584,9 +2674,7 @@ export function renderNewWordPreviewScreen({
         <span class="badge badge-blue" style="font-size: 11px; font-weight: 700;">Làm quen từ mới</span>
         <span class="session-counter-text">Thẻ ${currentIndex + 1}/${totalWords}</span>
       </div>
-      <div class="session-progress-track">
-        ${segmentsHtml}
-      </div>
+      ${trackHtml}
       <div class="session-progress-right">
         <button id="session-audio-btn" class="icon-btn session-theme-toggle" title="${autoAudio ? 'Tắt tự động phát âm' : 'Bật tự động phát âm'}">
           ${autoAudio ? ICONS.audio : ICONS.audioMuted}
