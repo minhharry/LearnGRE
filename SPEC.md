@@ -221,11 +221,16 @@ Không áp đặt 4 nhịp sóng cứng nhắc. Thuật toán phân bổ câu h�
   * **Local LLM 35B:** Đảm nhiệm duy nhất việc sáng tác câu ngữ cảnh học thuật tự nhiên, trích xuất manh mối (`clue`), vị trí `[BLANK]`, từ loại (`pos_required`), hình thái (`form_required`) và giải thích lý do từ đúng (`rationale`). LLM hoàn toàn không phải chọn distractor từ danh sách ràng buộc phức tạp, giúp tránh quá tải ngữ cảnh, loại bỏ nguy cơ hallucination và đảm bảo tốc độ sinh nhanh khi tắt `thinking`.
   * **Engine lọc Python (`scripts/generate_data.py`):** Đảm nhiệm thuật toán chọn và gán 3 distractors theo các ràng buộc sư phạm và thuật toán kiểm tra nghiêm ngặt.
 
-* **Ràng buộc Nguồn Distractor theo Nhóm (Curriculum-Constrained Distractor Pool):**
+* **Ràng buộc Nguồn Distractor theo Nhóm & SRS Level (Curriculum & SRS-Constrained Distractor Pool):**
   * Toàn bộ 3 distractor **bắt buộc phải thuộc kho 960 từ** trong `wordbank.csv` hoặc danh mục `academic_fallback_words`.
-  * **Ưu tiên 1 (Nội nhóm - Intra-Group):** Bốc từ các từ trong CÙNG Group với từ mục tiêu có cùng `pos_required`. Đảm bảo cả 4 lựa chọn đều có mức độ quen thuộc ngang nhau trong phiên học, triệt tiêu hoàn toàn mẹo đoán mò nhận diện mặt chữ (Familiarity Bias / "3 lạ 1 quen").
-  * **Ưu tiên 2 (Lũy tiến - Cumulative Prior-Groups):** Nếu Group hiện tại không đủ số từ cùng từ loại, lấy bổ sung từ các Group đã mở khóa trước đó (`Group < N`).
-  * **Ưu tiên 3 (Dự phòng Cốt lõi - Academic Core Fallback):** Khi Group hiện tại và các Group trước không đủ từ cùng từ loại (ví dụ: Group 1 chỉ có 3 danh từ gồm *misnomer, proclivity, spendthrift*), tự động bổ sung distractor từ danh mục tĩnh ~25 từ học thuật thông dụng chuẩn GRE được cấu hình trong `scripts/config.json` (ví dụ: *paradox, controversy, hypothesis, dilemma, catalyst, dichotomy*...), tuyệt đối không bốc từ các Group chưa học (`Group > N`).
+  * Ràng buộc tiến trình: Chỉ lấy từ các nhóm đã tiếp cận (`Group <= N`), tuyệt đối không bốc từ các Group chưa học (`Group > N`).
+  * **Ràng buộc cùng từ loại (POS Invariance):** Toàn bộ các ưu tiên chính đều bắt buộc 100% ứng viên phải có cùng từ loại (`pos`) với từ mục tiêu.
+  * **Ưu tiên 1 (Cùng từ loại - Mức SRS Thấp / Đang học & Yếu):** Bốc từ các từ có `level === 1` hoặc `level === 2` hoặc bị gắn cờ lỗi (`flagged_error === true`) trong các nhóm đã mở khóa (`Group <= N`). Đây là nhóm từ vựng người học mới nạp hoặc hay nhầm lẫn, cần củng cố phản xạ nhận diện.
+    * *Ràng buộc đa dạng hóa (Intra-Group Cap):* Tối đa 1 từ cùng Group với từ mục tiêu được chọn vào bộ 3 distractors (nếu các Group trước có từ cùng từ loại) để triệt tiêu vĩnh viễn hiện tượng co cụm các từ ít từ loại (như 4 động từ ở Group 5).
+  * **Ưu tiên 2 (Cùng từ loại - Mức SRS Trung bình):** Bổ sung từ các từ có `level === 3` (đang trong chu kỳ review 48h).
+  * **Ưu tiên 3 (Cùng từ loại - Mức SRS Cao):** Bổ sung từ các từ có `level === 4` (đã thành thạo).
+  * **Ưu tiên 4 (Dự phòng Cốt lõi - Academic Core Fallback):** Khi các nhóm đã học chưa đủ từ cùng từ loại (ví dụ người dùng mới bắt đầu Group 1), tự động bổ sung distractor cùng từ loại từ danh mục tĩnh ~25 từ học thuật thông dụng chuẩn GRE được cấu hình trong `scripts/config.json`.
+  * **Dự phòng cuối cùng (Level 0 Fallback):** Chỉ trong trường hợp tài khoản mới bắt đầu Group 1 chưa có từ nào đạt Level 1-3 và danh mục fallback không đủ, hệ thống mới nới lỏng để bốc từ Level 0 (chưa học). Tuyệt đối loại bỏ Level 0 khỏi các ưu tiên chính.
 
 * **Thuật toán Chống Trùng Nghĩa Tuyệt đối & Chuẩn hóa Ngữ pháp:**
   Để ngăn ngừa tuyệt đối nguy cơ câu hỏi có 2 đáp án đúng hoặc lệch cấu trúc ngữ pháp:

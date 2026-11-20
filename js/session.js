@@ -259,7 +259,7 @@ export class SessionManager {
    * Creates a Flash Recall question for a target word.
    */
   createFlashRecallQuestion(targetWord) {
-    const distractors = selectFlashDistractors(targetWord, this.allVocab);
+    const distractors = selectFlashDistractors(targetWord, this.allVocab, this.storageData);
     const options = [
       {
         id: targetWord.id,
@@ -302,7 +302,7 @@ export class SessionManager {
    * Displays the definition/meaning in the prompt, with 4 random words as options.
    */
   createReverseFlashRecallQuestion(targetWord) {
-    const distractors = selectFlashDistractors(targetWord, this.allVocab);
+    const distractors = selectFlashDistractors(targetWord, this.allVocab, this.storageData);
     const options = [
       {
         id: targetWord.id,
@@ -356,7 +356,7 @@ export class SessionManager {
 
     // Select dynamic distractors using the distractor engine (same as Flash Recall)
     // Fall back to template distractors if distractor engine returns empty
-    const dynamicDistractors = selectFlashDistractors(targetWord, this.allVocab);
+    const dynamicDistractors = selectFlashDistractors(targetWord, this.allVocab, this.storageData);
     const distractorWords = (dynamicDistractors && dynamicDistractors.length > 0)
       ? dynamicDistractors.map((d) => d.word)
       : (tpl.distractors || []);

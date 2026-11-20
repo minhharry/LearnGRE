@@ -110,13 +110,16 @@ export const ACADEMIC_FALLBACK_RECORDS = {
 };
 
 /**
- * Selects 3 high-quality distractors for Flash Recall for a target word.
+ * Selects 3 high-quality distractors for Flash Recall & Text Completion for a target word.
+ * Prioritizes candidates with low SRS levels (Levels 1, 2, then 3) having the same POS,
+ * excluding Level 0 words from primary consideration, and enforcing intra-group diversity.
  *
  * @param {Object} targetWord - The target vocabulary item.
  * @param {Array<Object>} allVocabList - Full list of loaded vocabulary items.
+ * @param {Object|null} [storageData=null] - User storage data with SRS progress per word.
  * @returns {Array<Object>} Array of 3 distractor word objects.
  */
-export function selectFlashDistractors(targetWord, allVocabList) {
+export function selectFlashDistractors(targetWord, allVocabList, storageData = null) {
   const targetId = targetWord.id;
   const targetPos = targetWord.pos;
   const targetGroup = targetWord.group || 1;
@@ -190,11 +193,24 @@ export function selectFlashDistractors(targetWord, allVocabList) {
     return true;
   };
 
-  // Bucket candidates strictly from current or prior groups
-  const intraGroupMatches = [];
-  const priorGroupMatches = [];
-  const intraGroupOtherPos = [];
-  const priorGroupOtherPos = [];
+  // Helper to extract candidate SRS level and flagged status
+  const getCandidateSrsInfo = (candidate) => {
+    if (!storageData || !storageData.words) {
+      return { level: 0, isFlagged: false };
+    }
+    const rec = storageData.words[candidate.id];
+    return {
+      level: rec ? (rec.level ?? 0) : 0,
+      isFlagged: rec ? Boolean(rec.flagged_error) : false,
+    };
+  };
+
+  // Bucket candidates by POS and SRS level pools
+  const samePosLevel1And2 = []; // Level 1, 2 or flagged_error (active learning / weak retention)
+  const samePosLevel3 = [];      // Level 3 (reviewing)
+  const samePosLevel4 = [];      // Level 4 (mastered)
+  const samePosLevel0 = [];      // Level 0 (unseen - last resort fallback only)
+  const otherPosMatches = [];    // Other POS candidates (last resort)
 
   for (const candidate of allVocabList) {
     if (!candidate || !candidate.group) continue;
@@ -204,77 +220,101 @@ export function selectFlashDistractors(targetWord, allVocabList) {
     if (!isCandidateValid(candidate)) continue;
 
     if (candidate.pos === targetPos) {
-      if (candidate.group === targetGroup) {
-        intraGroupMatches.push(candidate);
+      const { level, isFlagged } = getCandidateSrsInfo(candidate);
+      if (isFlagged || level === 1 || level === 2) {
+        samePosLevel1And2.push(candidate);
+      } else if (level === 3) {
+        samePosLevel3.push(candidate);
+      } else if (level === 4) {
+        samePosLevel4.push(candidate);
       } else {
-        priorGroupMatches.push(candidate);
+        samePosLevel0.push(candidate);
       }
     } else {
-      if (candidate.group === targetGroup) {
-        intraGroupOtherPos.push(candidate);
-      } else {
-        priorGroupOtherPos.push(candidate);
-      }
+      otherPosMatches.push(candidate);
     }
   }
 
-  // Gather distractors according to SPEC.md section 5.3 priority:
-  // Priority 1: Intra-Group same POS
-  // Priority 2: Cumulative Prior-Groups same POS (Group < targetGroup)
-  // Priority 3: Academic Core Fallback same POS (scripts/config.json)
-  // Priority 3b: Academic Core Fallback across other POS
-  // Priority 4: Intra-Group other POS
-  // Priority 5: Prior-Group other POS
-  // STRICT RULE: Never pick any candidate from Group > targetGroup.
+  // Gather distractors prioritizing low SRS levels (Levels 1, 2, then 3):
+  // Priority 1: Same POS - Level 1 & 2 (or Flagged) [Max 1 intra-group distractor]
+  // Priority 2: Same POS - Level 3 (Reviewing) [Max 1 intra-group distractor]
+  // Priority 3: Same POS - Level 4 (Mastered) [Max 1 intra-group distractor]
+  // Priority 4: Academic Core Fallback same POS (scripts/config.json)
+  // Relaxation: Relax intra-group cap if still < 3
+  // Last resort: Same POS Level 0 (unseen words, e.g. when first starting Group 1)
+  // Ultimate fallback: Academic Core Fallback across other POS & otherPosMatches
   const chosen = [];
   const chosenIds = new Set();
   const chosenWords = new Set();
+  let intraGroupCount = 0;
+  const MAX_INTRA_GROUP_DISTRACTORS = 1;
 
-  const addPool = (pool) => {
+  const addPool = (pool, enforceCap = true) => {
     const shuffled = shuffleArray(pool);
     for (const item of shuffled) {
       if (chosen.length >= 3) break;
       const w = item.word.toLowerCase().trim();
       if (!chosenIds.has(item.id) && !chosenWords.has(w) && isCandidateValid(item)) {
+        const isSameGroup = item.group === targetGroup;
+        if (enforceCap && isSameGroup && intraGroupCount >= MAX_INTRA_GROUP_DISTRACTORS) {
+          continue;
+        }
         chosen.push(item);
         chosenIds.add(item.id);
         chosenWords.add(w);
+        if (isSameGroup) {
+          intraGroupCount++;
+        }
       }
     }
   };
 
-  // Priority 1: Intra-group same POS
-  addPool(intraGroupMatches);
+  // Priority 1: Same POS, Level 1 & 2 (or Flagged)
+  addPool(samePosLevel1And2, true);
 
-  // Priority 2: Prior-group same POS
+  // Priority 2: Same POS, Level 3
   if (chosen.length < 3) {
-    addPool(priorGroupMatches);
+    addPool(samePosLevel3, true);
   }
 
-  // Priority 3: Academic Core Fallback same POS
+  // Priority 3: Same POS, Level 4
+  if (chosen.length < 3) {
+    addPool(samePosLevel4, true);
+  }
+
+  // Priority 4: Academic Core Fallback same POS
   if (chosen.length < 3) {
     const fallbackSamePos = ACADEMIC_FALLBACK_RECORDS[targetPos] || [];
-    addPool(fallbackSamePos);
+    addPool(fallbackSamePos, false);
   }
 
-  // Priority 3b: Academic Core Fallback across other POS
+  // Relax intra-group cap if still needed (for small groups or early stages like Group 1)
+  if (chosen.length < 3) {
+    addPool(samePosLevel1And2, false);
+  }
+  if (chosen.length < 3) {
+    addPool(samePosLevel3, false);
+  }
+  if (chosen.length < 3) {
+    addPool(samePosLevel4, false);
+  }
+
+  // Last-resort fallback: Level 0 words same POS (only when no learned words exist yet, e.g. brand new user in Group 1)
+  if (chosen.length < 3) {
+    addPool(samePosLevel0, false);
+  }
+
+  // Fallback across other POS if still < 3
   if (chosen.length < 3) {
     for (const [posKey, records] of Object.entries(ACADEMIC_FALLBACK_RECORDS)) {
       if (posKey !== targetPos) {
-        addPool(records);
+        addPool(records, false);
         if (chosen.length >= 3) break;
       }
     }
   }
-
-  // Priority 4: Intra-group other POS
   if (chosen.length < 3) {
-    addPool(intraGroupOtherPos);
-  }
-
-  // Priority 5: Prior-group other POS
-  if (chosen.length < 3) {
-    addPool(priorGroupOtherPos);
+    addPool(otherPosMatches, false);
   }
 
   return chosen.slice(0, 3);
