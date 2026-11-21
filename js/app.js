@@ -15,6 +15,7 @@ import {
   recordCompletedSession,
   recordDailyActivity,
   countDueWords,
+  getQuestionModesSummary,
 } from './storage.js';
 import { evaluateWordAnswer } from './srs.js';
 import { SessionManager } from './session.js';
@@ -237,6 +238,7 @@ class AppController {
           this.renderSidebar();
           this.renderCurrentView();
         },
+        onOpenQuestionSettings: () => this.openQuestionSettingsModal(),
       });
     } else if (this.currentView === 'errors') {
       renderErrorNotebook({
@@ -720,6 +722,7 @@ class AppController {
     const shortcutsModal = document.getElementById('shortcuts-modal');
     const backupModal = document.getElementById('backup-modal');
     const audioModal = document.getElementById('audio-settings-modal');
+    const questionModal = document.getElementById('question-settings-modal');
 
     const handleOpenShortcuts = () => {
       shortcutsModal?.classList.add('active');
@@ -738,6 +741,83 @@ class AppController {
 
     document.getElementById('sidebar-audio-settings-btn')?.addEventListener('click', () => {
       this.openAudioSettingsModal();
+    });
+
+    // Question Mode Settings Modal Triggers
+    document.getElementById('topbar-question-settings-btn')?.addEventListener('click', () => {
+      this.openQuestionSettingsModal();
+    });
+
+    document.getElementById('sidebar-question-settings-btn')?.addEventListener('click', () => {
+      this.openQuestionSettingsModal();
+    });
+
+    // Question Mode Checkboxes
+    const handleModeCheckboxChange = (e) => {
+      const flashCb = document.getElementById('setting-mode-flash');
+      const revCb = document.getElementById('setting-mode-reverse-flash');
+      const tcCb = document.getElementById('setting-mode-tc');
+      const speedCb = document.getElementById('setting-mode-speed-match');
+
+      const flash = flashCb ? flashCb.checked : true;
+      const rev = revCb ? revCb.checked : true;
+      const tc = tcCb ? tcCb.checked : true;
+      const speed = speedCb ? speedCb.checked : true;
+
+      // Ensure at least one core multiple-choice mode is selected
+      if (!flash && !rev && !tc) {
+        showToast('Cần duy trì ít nhất 1 dạng câu hỏi trắc nghiệm!', 'error');
+        if (e && e.target) {
+          e.target.checked = true;
+        }
+        return;
+      }
+
+      this.storageData.ui_prefs.question_modes = {
+        flash_recall: flash,
+        reverse_flash_recall: rev,
+        text_completion: tc,
+        speed_match: speed,
+      };
+
+      saveProgressData(this.storageData);
+      this.syncQuestionSettingsUI();
+      showToast('Đã lưu cài đặt chế độ câu hỏi', 'info');
+    };
+
+    document.getElementById('setting-mode-flash')?.addEventListener('change', handleModeCheckboxChange);
+    document.getElementById('setting-mode-reverse-flash')?.addEventListener('change', handleModeCheckboxChange);
+    document.getElementById('setting-mode-tc')?.addEventListener('change', handleModeCheckboxChange);
+    document.getElementById('setting-mode-speed-match')?.addEventListener('change', handleModeCheckboxChange);
+
+    // Preset buttons for question modes
+    document.querySelectorAll('.preset-pill-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const preset = btn.dataset.preset;
+        let newModes = { flash_recall: true, reverse_flash_recall: true, text_completion: true, speed_match: true };
+        if (preset === 'flash_only') {
+          newModes = { flash_recall: true, reverse_flash_recall: false, text_completion: false, speed_match: false };
+        } else if (preset === 'tc_only') {
+          newModes = { flash_recall: false, reverse_flash_recall: false, text_completion: true, speed_match: false };
+        } else if (preset === 'vocab_only') {
+          newModes = { flash_recall: true, reverse_flash_recall: true, text_completion: false, speed_match: true };
+        }
+
+        this.storageData.ui_prefs.question_modes = newModes;
+        saveProgressData(this.storageData);
+
+        const flashCb = document.getElementById('setting-mode-flash');
+        const revCb = document.getElementById('setting-mode-reverse-flash');
+        const tcCb = document.getElementById('setting-mode-tc');
+        const speedCb = document.getElementById('setting-mode-speed-match');
+        if (flashCb) flashCb.checked = newModes.flash_recall;
+        if (revCb) revCb.checked = newModes.reverse_flash_recall;
+        if (tcCb) tcCb.checked = newModes.text_completion;
+        if (speedCb) speedCb.checked = newModes.speed_match;
+
+        this.syncQuestionSettingsUI();
+        showToast(`Đã áp dụng cấu hình: ${btn.textContent}`, 'info');
+      });
     });
 
     // Audio Settings Modal Interactions
@@ -813,6 +893,7 @@ class AppController {
         shortcutsModal?.classList.remove('active');
         backupModal?.classList.remove('active');
         audioModal?.classList.remove('active');
+        questionModal?.classList.remove('active');
       });
     });
 
@@ -925,11 +1006,13 @@ class AppController {
         if (
           shortcutsModal?.classList.contains('active') ||
           backupModal?.classList.contains('active') ||
-          audioModal?.classList.contains('active')
+          audioModal?.classList.contains('active') ||
+          questionModal?.classList.contains('active')
         ) {
           shortcutsModal?.classList.remove('active');
           backupModal?.classList.remove('active');
           audioModal?.classList.remove('active');
+          questionModal?.classList.remove('active');
           return;
         }
         if (this.currentView === 'session' || this.currentView === 'overview' || this.currentView === 'errors') {
@@ -980,6 +1063,21 @@ class AppController {
             this.currentView = 'dashboard';
             this.renderSidebar();
             this.renderCurrentView();
+            return;
+          }
+        }
+      }
+
+      // Key O: Open Question Modes Settings Modal
+      if (this.currentView !== 'session') {
+        if (e.key === 'o' || e.key === 'O') {
+          if (
+            !shortcutsModal?.classList.contains('active') &&
+            !backupModal?.classList.contains('active') &&
+            !audioModal?.classList.contains('active')
+          ) {
+            e.preventDefault();
+            this.openQuestionSettingsModal();
             return;
           }
         }
@@ -1201,6 +1299,83 @@ class AppController {
     }
 
     audioModal.classList.add('active');
+  }
+
+  /**
+   * Opens the Question Modes Settings Modal and synchronizes input values.
+   */
+  openQuestionSettingsModal() {
+    const modal = document.getElementById('question-settings-modal');
+    if (!modal) return;
+
+    if (!this.storageData.ui_prefs.question_modes) {
+      this.storageData.ui_prefs.question_modes = {
+        flash_recall: true,
+        reverse_flash_recall: true,
+        text_completion: true,
+        speed_match: true,
+      };
+    }
+
+    const modes = this.storageData.ui_prefs.question_modes;
+    const flashCb = document.getElementById('setting-mode-flash');
+    const revCb = document.getElementById('setting-mode-reverse-flash');
+    const tcCb = document.getElementById('setting-mode-tc');
+    const speedCb = document.getElementById('setting-mode-speed-match');
+
+    if (flashCb) flashCb.checked = modes.flash_recall !== false;
+    if (revCb) revCb.checked = modes.reverse_flash_recall !== false;
+    if (tcCb) tcCb.checked = modes.text_completion !== false;
+    if (speedCb) speedCb.checked = modes.speed_match !== false;
+
+    this.syncQuestionSettingsUI();
+    modal.classList.add('active');
+  }
+
+  /**
+   * Updates UI presentation for active question modes (card highlights, presets, and summaries).
+   */
+  syncQuestionSettingsUI() {
+    const modes = this.storageData.ui_prefs.question_modes || {};
+    const flash = modes.flash_recall !== false;
+    const rev = modes.reverse_flash_recall !== false;
+    const tc = modes.text_completion !== false;
+    const speed = modes.speed_match !== false;
+
+    // Highlight card active state
+    document.getElementById('card-mode-flash')?.classList.toggle('selected', flash);
+    document.getElementById('card-mode-reverse-flash')?.classList.toggle('selected', rev);
+    document.getElementById('card-mode-tc')?.classList.toggle('selected', tc);
+    document.getElementById('card-mode-speed-match')?.classList.toggle('selected', speed);
+
+    // Update preset pills active state
+    document.querySelectorAll('.preset-pill-btn').forEach((btn) => {
+      const p = btn.dataset.preset;
+      let isActive = false;
+      if (p === 'all') {
+        isActive = flash && rev && tc && speed;
+      } else if (p === 'flash_only') {
+        isActive = flash && !rev && !tc && !speed;
+      } else if (p === 'tc_only') {
+        isActive = !flash && !rev && tc && !speed;
+      } else if (p === 'vocab_only') {
+        isActive = flash && rev && !tc && speed;
+      }
+      btn.classList.toggle('active', isActive);
+    });
+
+    // Update modal summary text
+    const summaryEl = document.getElementById('question-settings-summary-text');
+    if (summaryEl) {
+      const activeCount = [flash, rev, tc, speed].filter(Boolean).length;
+      summaryEl.textContent = `Đang bật: ${activeCount}/4 dạng (${getQuestionModesSummary(modes)})`;
+    }
+
+    // Update dashboard pill text if currently visible
+    const dashModesText = document.getElementById('dashboard-modes-text');
+    if (dashModesText) {
+      dashModesText.textContent = getQuestionModesSummary(modes);
+    }
   }
 }
 

@@ -16,10 +16,10 @@
     rel="stylesheet">
 
   <!-- Application Stylesheets -->
-  <link rel="stylesheet" href="css/base.css?v=4.6">
-  <link rel="stylesheet" href="css/layout.css?v=4.6">
-  <link rel="stylesheet" href="css/components.css?v=4.6">
-  <link rel="stylesheet" href="css/responsive.css?v=4.6">
+  <link rel="stylesheet" href="css/base.css?v=4.7">
+  <link rel="stylesheet" href="css/layout.css?v=4.7">
+  <link rel="stylesheet" href="css/components.css?v=4.7">
+  <link rel="stylesheet" href="css/responsive.css?v=4.7">
 </head>
 
 <body>
@@ -60,6 +60,22 @@
           </svg>
           <span>Streak <span id="streak-count">1</span></span>
         </div>
+
+        <!-- Question Modes Settings Button -->
+        <button id="topbar-question-settings-btn" class="icon-btn" title="Cài đặt Chế độ Câu hỏi (Flash Recall, Reverse, Text Completion)"
+          aria-label="Cài đặt Chế độ Câu hỏi">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
+          </svg>
+        </button>
 
         <!-- Auto Pronounce Audio Toggle Button -->
         <button id="topbar-audio-btn" class="icon-btn" title="Bật/Tắt tự động phát âm từ vựng"
@@ -199,6 +215,21 @@
             </svg>
             <span>Sao lưu & Khôi phục dữ liệu</span>
           </button>
+          <button id="sidebar-question-settings-btn" class="sidebar-footer-btn" title="Cài đặt Chế độ Câu hỏi"
+            aria-label="Cài đặt Chế độ Câu hỏi">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="1" y1="14" x2="7" y2="14" />
+              <line x1="9" y1="8" x2="15" y2="8" />
+              <line x1="17" y1="16" x2="23" y2="16" />
+            </svg>
+            <span>Cài đặt Chế độ Câu hỏi</span>
+          </button>
           <button id="sidebar-audio-settings-btn" class="sidebar-footer-btn" title="Cài đặt Âm lượng & Giọng đọc"
             aria-label="Cài đặt Âm lượng">
             <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
@@ -303,6 +334,10 @@
             <tr>
               <td><span class="keycap">H</span></td>
               <td>Quay về <strong>Danh sách Groups (Trang chủ)</strong> bất kỳ lúc nào.</td>
+            </tr>
+            <tr>
+              <td><span class="keycap">O</span></td>
+              <td>Mở hộp thoại <strong>Cài đặt Chế độ Câu hỏi</strong> (Flash Recall, Reverse Flash, Text Completion).</td>
             </tr>
             <tr>
               <td><span class="keycap">Esc</span></td>
@@ -499,8 +534,128 @@
     </div>
   </div>
 
+  <!-- Modal 4: Question Modes Settings Modal -->
+  <div id="question-settings-modal" class="modal-overlay" role="dialog" aria-modal="true"
+    aria-labelledby="modal-question-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-question-title" class="modal-title">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
+          </svg>
+          Cài đặt Chế độ Câu hỏi (Question Modes)
+        </h2>
+        <button class="modal-close-btn" aria-label="Đóng hộp thoại">
+          <svg class="svg-icon" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13.5px; color: var(--text-body); margin-bottom: 14px; line-height: 1.5;">
+          Tùy chỉnh các dạng câu hỏi sẽ xuất hiện trong phiên luyện tập. Bạn có thể bật hoặc tắt từng dạng trắc nghiệm theo mục tiêu cá nhân (ví dụ: chỉ luyện Flash Recall, hoặc chỉ luyện Text Completion).
+        </p>
+
+        <!-- Quick Presets -->
+        <div class="preset-pill-section" style="margin-bottom: 16px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            Cấu hình nhanh:
+          </div>
+          <div class="preset-pill-group">
+            <button type="button" class="preset-pill-btn" data-preset="all">Tất cả (Mặc định)</button>
+            <button type="button" class="preset-pill-btn" data-preset="flash_only">Chỉ Flash Recall</button>
+            <button type="button" class="preset-pill-btn" data-preset="tc_only">Chỉ Text Completion</button>
+            <button type="button" class="preset-pill-btn" data-preset="vocab_only">Flash & Reverse (Từ vựng)</button>
+          </div>
+        </div>
+
+        <!-- Checkbox Cards List -->
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Card 1: Flash Recall -->
+          <label class="mode-setting-card" id="card-mode-flash" for="setting-mode-flash">
+            <div class="mode-card-checkbox-col">
+              <input type="checkbox" id="setting-mode-flash" class="mode-checkbox">
+            </div>
+            <div class="mode-card-content">
+              <div class="mode-card-header">
+                <span class="mode-card-title">Flash Recall (Xuôi: Từ &rarr; Nghĩa)</span>
+                <span class="mode-badge badge-primary">Phản xạ nhanh</span>
+              </div>
+              <div class="mode-card-desc">
+                Hiển thị từ tiếng Anh, chọn 1 trong 4 định nghĩa / giải nghĩa tiếng Việt. Tối ưu nhận diện nhanh nghĩa từ vựng.
+              </div>
+            </div>
+          </label>
+
+          <!-- Card 2: Reverse Flash Recall -->
+          <label class="mode-setting-card" id="card-mode-reverse-flash" for="setting-mode-reverse-flash">
+            <div class="mode-card-checkbox-col">
+              <input type="checkbox" id="setting-mode-reverse-flash" class="mode-checkbox">
+            </div>
+            <div class="mode-card-content">
+              <div class="mode-card-header">
+                <span class="mode-card-title">Reverse Flash Recall (Ngược: Nghĩa &rarr; Từ)</span>
+                <span class="mode-badge badge-secondary">Nhớ chủ động</span>
+              </div>
+              <div class="mode-card-desc">
+                Hiển thị định nghĩa / giải nghĩa tiếng Việt, chọn từ tiếng Anh tương ứng. Rèn luyện phản xạ gợi nhớ từ hai chiều.
+              </div>
+            </div>
+          </label>
+
+          <!-- Card 3: Text Completion -->
+          <label class="mode-setting-card" id="card-mode-tc" for="setting-mode-tc">
+            <div class="mode-card-checkbox-col">
+              <input type="checkbox" id="setting-mode-tc" class="mode-checkbox">
+            </div>
+            <div class="mode-card-content">
+              <div class="mode-card-header">
+                <span class="mode-card-title">Text Completion (Ngữ cảnh câu GRE)</span>
+                <span class="mode-badge badge-accent">Học thuật cao</span>
+              </div>
+              <div class="mode-card-desc">
+                Đọc câu học thuật có 1 chỗ trống [BLANK], suy luận từ manh mối logic (clues) và phân tích rationale chuyên sâu chuẩn thi thật GRE.
+              </div>
+            </div>
+          </label>
+
+          <!-- Card 4: Speed Match Warm-up -->
+          <label class="mode-setting-card" id="card-mode-speed-match" for="setting-mode-speed-match">
+            <div class="mode-card-checkbox-col">
+              <input type="checkbox" id="setting-mode-speed-match" class="mode-checkbox">
+            </div>
+            <div class="mode-card-content">
+              <div class="mode-card-header">
+                <span class="mode-card-title">Speed Match (Khởi động ghép 4 cặp Từ - Nghĩa)</span>
+                <span class="mode-badge badge-muted">Khởi động</span>
+              </div>
+              <div class="mode-card-desc">
+                Bài tập ghép 4 cặp từ và nghĩa tương ứng ở đầu phiên học để kích hoạt phản xạ trí não trước khi làm bài trắc nghiệm.
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="question-settings-summary-text" style="font-size: 12.5px; color: var(--text-muted);">
+          Đang bật: 4/4 dạng
+        </span>
+        <button class="btn-primary modal-close-btn" style="min-width: 90px;">Đã xong</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main JavaScript Module Entry Point -->
-  <script type="module" src="js/app.js?v=4.3"></script>
+  <script type="module" src="js/app.js?v=4.4"></script>
 
   <!-- Service Worker Registration for Offline Caching -->
   <script>

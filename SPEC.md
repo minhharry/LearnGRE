@@ -86,6 +86,8 @@ Tất cả các dạng trắc nghiệm đơn đều chuẩn hóa về dãy phím
 | **`P`** | Phát âm từ vựng hiện tại (Text-to-Speech qua Web Speech API native của trình duyệt). |
 | **`Space`** hoặc **`Enter`** | Chuyển sang câu hỏi tiếp theo sau khi bảng giải thích/kết quả đã hiển thị. |
 | **`S`** | Gắn cờ hoặc bỏ cờ từ vựng vào Sổ tay câu sai (Error Notebook). |
+| **`H`** | Quay về **Danh sách Groups (Trang chủ)** khi ở ngoài phiên học. |
+| **`O`** | Mở hộp thoại **Cài đặt Chế độ Câu hỏi** (Flash Recall, Reverse Flash, Text Completion, Speed Match). |
 | **`Esc`** | Tạm dừng phiên học hoặc đóng hộp thoại Modal. |
 
 ### 2.4. Khả năng thích ứng Đa màn hình (Responsive Design)
@@ -133,7 +135,13 @@ Mỗi dòng là một câu hỏi học thuật Text Completion hoàn chỉnh (1 
   "ui_prefs": {
     "sidebar_width": 320,
     "study_mode": "guided",
-    "theme": "dark"
+    "theme": "dark",
+    "question_modes": {
+      "flash_recall": true,
+      "reverse_flash_recall": true,
+      "text_completion": true,
+      "speed_match": true
+    }
   },
   "words": {
     "g1_w01": {

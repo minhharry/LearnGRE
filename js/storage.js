@@ -45,6 +45,12 @@ export function createDefaultState() {
       audio_rate: 0.95, // Academic articulation rate
       audio_pitch: 1.05, // Formant projection boost for high intelligibility
       preferred_voice_name: '', // Empty means auto-detect loudest, highest clarity voice
+      question_modes: {
+        flash_recall: true, // Flash Recall (Word -> Meaning)
+        reverse_flash_recall: true, // Reverse Flash Recall (Meaning -> Word)
+        text_completion: true, // Text Completion (Context sentences)
+        speed_match: true, // Speed Match warm-up in session
+      },
     },
     words: {},
     activity: {},
@@ -88,6 +94,12 @@ export function loadProgressData() {
         audio_rate: 0.95,
         audio_pitch: 1.05,
         preferred_voice_name: '',
+        question_modes: {
+          flash_recall: true,
+          reverse_flash_recall: true,
+          text_completion: true,
+          speed_match: true,
+        },
       };
     } else {
       if (data.ui_prefs.auto_audio === undefined) {
@@ -104,6 +116,27 @@ export function loadProgressData() {
       }
       if (data.ui_prefs.preferred_voice_name === undefined) {
         data.ui_prefs.preferred_voice_name = '';
+      }
+      if (!data.ui_prefs.question_modes || typeof data.ui_prefs.question_modes !== 'object') {
+        data.ui_prefs.question_modes = {
+          flash_recall: true,
+          reverse_flash_recall: true,
+          text_completion: true,
+          speed_match: true,
+        };
+      } else {
+        if (data.ui_prefs.question_modes.flash_recall === undefined) {
+          data.ui_prefs.question_modes.flash_recall = true;
+        }
+        if (data.ui_prefs.question_modes.reverse_flash_recall === undefined) {
+          data.ui_prefs.question_modes.reverse_flash_recall = true;
+        }
+        if (data.ui_prefs.question_modes.text_completion === undefined) {
+          data.ui_prefs.question_modes.text_completion = true;
+        }
+        if (data.ui_prefs.question_modes.speed_match === undefined) {
+          data.ui_prefs.question_modes.speed_match = true;
+        }
       }
     }
 
@@ -336,3 +369,29 @@ export function countDueWords(storageData, lookaheadMs = SRS_CONFIG.due_lookahea
   }
   return count;
 }
+
+/**
+ * Returns a concise human-readable summary of active question modes.
+ * @param {Object} questionModes
+ * @returns {string}
+ */
+export function getQuestionModesSummary(questionModes) {
+  if (!questionModes) return 'Mặc định (Tất cả)';
+  const flash = questionModes.flash_recall !== false;
+  const rev = questionModes.reverse_flash_recall !== false;
+  const tc = questionModes.text_completion !== false;
+  const speed = questionModes.speed_match !== false;
+
+  const count = [flash, rev, tc, speed].filter(Boolean).length;
+  if (flash && rev && tc && speed) return 'Tất cả (4/4)';
+  if (flash && rev && tc && !speed) return '3 dạng trắc nghiệm';
+  if (flash && !rev && !tc) return speed ? 'Flash Recall & Ghép từ' : 'Chỉ Flash Recall';
+  if (!flash && rev && !tc) return speed ? 'Reverse Flash & Ghép từ' : 'Chỉ Reverse Flash';
+  if (!flash && !rev && tc) return speed ? 'Text Completion & Ghép từ' : 'Chỉ Text Completion';
+  if (flash && rev && !tc) return speed ? 'Flash, Reverse & Ghép từ' : 'Flash & Reverse Flash';
+  if (flash && !rev && tc) return speed ? 'Flash, TC & Ghép từ' : 'Flash & Text Completion';
+  if (!flash && rev && tc) return speed ? 'Reverse, TC & Ghép từ' : 'Reverse & Text Completion';
+
+  return `${count}/4 dạng`;
+}
+

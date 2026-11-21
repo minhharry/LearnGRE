@@ -63,12 +63,13 @@ export class SessionManager {
       const dueWords = getDueWordsAcrossAllGroups(this.allVocab, this.storageData);
       const selectedWords = dueWords.length > 0 ? shuffleArray(dueWords) : groupWords.slice(0, 8);
 
-      // Warm-up: 1 Speed Match (4 pairs) if >= 4 words
-      if (selectedWords.length >= 4) {
+      // Warm-up: 1 Speed Match (4 pairs) if >= 4 words and speed_match is enabled
+      const enableSpeedMatch = this.isSpeedMatchEnabled();
+      if (enableSpeedMatch && selectedWords.length >= 4) {
         const warmUpWords = selectedWords.slice(0, 4);
         this.queue.push(this.createSpeedMatchQuestion(warmUpWords));
 
-        // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall) for ALL due words
+        // Core: Random among enabled types for ALL due words
         // Move warm-up words to the end of core questions to avoid immediate recency bias
         const remainingWords = selectedWords.slice(4);
         const coreWords = [...remainingWords, ...shuffleArray(warmUpWords)];
@@ -77,7 +78,7 @@ export class SessionManager {
           this.queue.push(this.createRandomQuestion(word));
         }
       } else {
-        // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall) for ALL due words
+        // Core: Random among enabled types for ALL due words
         for (let i = 0; i < selectedWords.length; i++) {
           const word = selectedWords[i];
           this.queue.push(this.createRandomQuestion(word));
@@ -200,12 +201,13 @@ export class SessionManager {
       return;
     }
 
-    // Warm-up: 1 Speed Match (4 pairs) if >= 4 words available
-    if (targetWords.length >= 4) {
+    // Warm-up: 1 Speed Match (4 pairs) if >= 4 words available and speed_match is enabled
+    const enableSpeedMatch = this.isSpeedMatchEnabled();
+    if (enableSpeedMatch && targetWords.length >= 4) {
       const warmUpWords = targetWords.slice(0, 4);
       this.queue.push(this.createSpeedMatchQuestion(warmUpWords));
 
-      // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall)
+      // Core: Random among enabled question types (TC, Flash Recall, Reverse Flash Recall)
       // Move warm-up words to the end of the session to test delayed recall instead of immediate recency
       const remainingTargetWords = targetWords.slice(4);
       const coreWords = [...remainingTargetWords, ...shuffleArray(warmUpWords)];
@@ -214,7 +216,7 @@ export class SessionManager {
         this.queue.push(this.createRandomQuestion(word));
       }
     } else {
-      // Core: Random 1 of 3 types (TC, Flash Recall, Reverse Flash Recall)
+      // Core: Random among enabled question types (TC, Flash Recall, Reverse Flash Recall)
       for (let i = 0; i < targetWords.length; i++) {
         const word = targetWords[i];
         this.queue.push(this.createRandomQuestion(word));
@@ -348,6 +350,10 @@ export class SessionManager {
   createTcQuestion(targetWord) {
     const templates = this.questionsByTargetId.get(targetWord.id) || [];
     if (templates.length === 0) {
+      const enabledTypes = this.getEnabledQuestionTypes();
+      if (enabledTypes.includes('REVERSE_FLASH') && !enabledTypes.includes('FLASH')) {
+        return this.createReverseFlashRecallQuestion(targetWord);
+      }
       return this.createFlashRecallQuestion(targetWord);
     }
 
@@ -404,13 +410,38 @@ export class SessionManager {
   }
 
   /**
-   * Helper to create a question for a word randomly choosing 1 of 3 types:
+   * Returns enabled multiple-choice question types configured in user settings.
+   * Guaranteed to return at least 1 type.
+   */
+  getEnabledQuestionTypes() {
+    const modes = this.storageData?.ui_prefs?.question_modes || {};
+    const types = [];
+    if (modes.flash_recall !== false) types.push('FLASH');
+    if (modes.reverse_flash_recall !== false) types.push('REVERSE_FLASH');
+    if (modes.text_completion !== false) types.push('TC');
+    return types.length > 0 ? types : ['FLASH', 'REVERSE_FLASH', 'TC'];
+  }
+
+  /**
+   * Checks if Speed Match warm-up is enabled in user settings.
+   */
+  isSpeedMatchEnabled() {
+    const modes = this.storageData?.ui_prefs?.question_modes || {};
+    return modes.speed_match !== false;
+  }
+
+  /**
+   * Helper to create a question for a word randomly choosing among user-enabled types:
    * Text Completion (TC), Flash Recall (FLASH), or Reverse Flash Recall (REVERSE_FLASH).
    */
   createRandomQuestion(word) {
+    const enabledTypes = this.getEnabledQuestionTypes();
     const hasTc = this.questionsByTargetId.has(word.id);
-    const availableTypes = hasTc ? ['TC', 'FLASH', 'REVERSE_FLASH'] : ['FLASH', 'REVERSE_FLASH'];
-    const chosenType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    let candidateTypes = enabledTypes.filter((t) => t !== 'TC' || hasTc);
+    if (candidateTypes.length === 0) {
+      candidateTypes = enabledTypes.length > 0 ? enabledTypes : ['FLASH'];
+    }
+    const chosenType = candidateTypes[Math.floor(Math.random() * candidateTypes.length)];
     if (chosenType === 'TC') {
       return this.createTcQuestion(word);
     } else if (chosenType === 'REVERSE_FLASH') {

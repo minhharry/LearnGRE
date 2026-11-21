@@ -4,7 +4,7 @@
  * System: LearnGRE Zero-Friction Desktop-Web App
  */
 
-import { countDueWords } from './storage.js';
+import { countDueWords, getQuestionModesSummary } from './storage.js';
 import { SRS_CONFIG } from './srs.js';
 
 // Clean SVG icon definitions (Strictly no emojis)
@@ -1208,6 +1208,7 @@ export function renderGroupDashboard({
   onToggleFlag,
   onStartAllDueSession,
   onViewOverview,
+  onOpenQuestionSettings,
 }) {
   stopCountdownTimer();
 
@@ -1279,11 +1280,18 @@ export function renderGroupDashboard({
               <span class="metric-value">${learningCount}</span>
             </div>
             ${unseenCount > 0 ? `<div class="metric-pill"><span class="metric-label">Chưa học:</span><span class="metric-value">${unseenCount}</span></div>` : ''}
+            <div class="metric-pill metric-pill-clickable" id="pill-question-modes" title="Nhấp để tùy chỉnh dạng câu hỏi (Phím tắt: O)">
+              <span class="metric-label">Dạng câu:</span>
+              <span class="metric-value text-accent" id="dashboard-modes-text">${getQuestionModesSummary(storageData.ui_prefs?.question_modes)}</span>
+            </div>
           </div>
         </div>
         <div class="dashboard-actions">
           <button id="btn-goto-overview" class="btn-secondary" title="Xem Dashboard Thống kê & Biểu đồ Heatmap (Phím tắt: D)">
             ${ICONS.chart} <span>Thống kê</span>
+          </button>
+          <button id="btn-dashboard-question-settings" class="btn-secondary" title="Cài đặt dạng câu hỏi (Phím tắt: O)">
+            ${ICONS.settings} <span>Dạng câu</span>
           </button>
           <button id="btn-start-all-due" class="btn-due-review ${totalDueCount > 0 ? 'has-due' : ''}" title="Tổng ôn tập toàn bộ từ đã đến hạn ôn của tất cả các group (Phím tắt: R)">
             ${ICONS.clock} <span>Tổng ôn tới hạn</span>
@@ -1457,6 +1465,8 @@ export function renderGroupDashboard({
 
   // Bind Buttons
   document.getElementById('btn-goto-overview')?.addEventListener('click', onViewOverview);
+  document.getElementById('btn-dashboard-question-settings')?.addEventListener('click', onOpenQuestionSettings);
+  document.getElementById('pill-question-modes')?.addEventListener('click', onOpenQuestionSettings);
   document.getElementById('btn-start-adaptive')?.addEventListener('click', onStartSession);
   document.getElementById('btn-start-speed-drill')?.addEventListener('click', onStartSpeedMatch);
   document.getElementById('btn-start-all-due')?.addEventListener('click', onStartAllDueSession);
