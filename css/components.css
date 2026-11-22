@@ -2991,6 +2991,7 @@
 
 /* ==========================================================================
    Mnemonic & Etymology Enhancements (Bảng từ, Sổ tay lỗi, Flashcard, Feedback)
+   Theme: Tinh tế theo hệ màu Indigo/Slate dịu mắt, hòa hợp hoàn hảo bảng màu VS Code
    ========================================================================== */
 
 /* Subtext in Group Dashboard and Error Notebook Tables */
@@ -3000,38 +3001,41 @@
   gap: 5px;
   margin-top: 4px;
   font-size: 11.5px;
-  line-height: 1.4;
-  color: #d97706;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.22);
+  line-height: 1.45;
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
   border-radius: var(--radius-xs);
-  padding: 3px 6px;
-  transition: background-color var(--transition-fast);
+  padding: 3px 7px;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
 [data-theme="dark"] .table-mnemonic-subtext {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.28);
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(51, 65, 85, 0.7);
 }
 
 .table-mnemonic-subtext .mnemonic-bullet {
   flex-shrink: 0;
   font-size: 12px;
+  opacity: 0.85;
 }
 
 /* Flashcard Preview Screen Section */
 .flashcard-mnemonic-section {
-  background: rgba(245, 158, 11, 0.06);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-left: 3px solid #6366f1;
   border-radius: var(--radius-md);
   padding: 12px 14px;
   margin-bottom: 12px;
 }
 
 [data-theme="dark"] .flashcard-mnemonic-section {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.32);
+  background: rgba(30, 41, 59, 0.45);
+  border-color: rgba(51, 65, 85, 0.8);
+  border-left-color: #818cf8;
 }
 
 .mnemonic-badge-tag {
@@ -3040,34 +3044,39 @@
   font-weight: 700;
   padding: 1px 6px;
   border-radius: var(--radius-xs);
-  background: rgba(245, 158, 11, 0.2);
-  color: #d97706;
+  background: #e0e7ff;
+  color: #4338ca;
   text-transform: uppercase;
   margin-left: 6px;
 }
 
 [data-theme="dark"] .mnemonic-badge-tag {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.25);
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.22);
 }
 
 .flashcard-mnemonic-text {
   font-size: 13.5px;
   line-height: 1.5;
-  color: var(--text-title);
+  color: #1e293b;
   margin-top: 4px;
   font-weight: 500;
 }
 
+[data-theme="dark"] .flashcard-mnemonic-text {
+  color: #e2e8f0;
+}
+
 .mnemonic-icon-prefix {
   margin-right: 4px;
+  opacity: 0.85;
 }
 
 /* Question Feedback & TC Rationale Box */
 .rationale-mnemonic-box {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-left: 3px solid #f59e0b;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-left: 3px solid #6366f1;
   border-radius: var(--radius-sm);
   padding: 9px 12px;
   margin-top: 10px;
@@ -3075,45 +3084,51 @@
 }
 
 [data-theme="dark"] .rationale-mnemonic-box {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.35);
-  border-left-color: #fbbf24;
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(51, 65, 85, 0.8);
+  border-left-color: #818cf8;
 }
 
 .rationale-mnemonic-label {
   font-size: 11.5px;
   font-weight: 700;
-  color: #d97706;
+  color: #4338ca;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 3px;
 }
 
 [data-theme="dark"] .rationale-mnemonic-label {
-  color: #fbbf24;
+  color: #a5b4fc;
 }
 
 .rationale-mnemonic-text {
   font-size: 13px;
   line-height: 1.45;
-  color: var(--text-primary);
+  color: #1e293b;
+}
+
+[data-theme="dark"] .rationale-mnemonic-text {
+  color: #cbd5e1;
 }
 
 /* Mini mnemonic in Vocab Lookup Grid */
 .lookup-mnemonic-mini {
   font-size: 11px;
   line-height: 1.35;
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.08);
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: var(--radius-xs);
-  padding: 2px 5px;
+  padding: 2px 6px;
   margin-top: 4px;
   margin-bottom: 4px;
 }
 
 [data-theme="dark"] .lookup-mnemonic-mini {
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.12);
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(51, 65, 85, 0.6);
 }
 
 
