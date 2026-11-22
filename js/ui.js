@@ -1395,7 +1395,14 @@ export function renderGroupDashboard({
                     </div>
                   </td>
                   <td><span class="pos-badge">${w.pos}</span></td>
-                  <td><span class="gloss-text">${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</span></td>
+                  <td>
+                    <span class="gloss-text">${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</span>
+                    ${w.mnemonic ? `
+                      <div class="table-mnemonic-subtext" title="Mẹo nhớ & Gốc từ">
+                        <span class="mnemonic-bullet">💡</span> <span>${w.mnemonic}</span>
+                      </div>
+                    ` : ''}
+                  </td>
                   <td>
                     <span class="level-pill level-pill-${lvl}">
                       <span class="level-dot"></span>
@@ -1552,7 +1559,14 @@ export function renderErrorNotebook({ vocabList, storageData, onStartErrorSessio
                     </td>
                     <td><span class="domain-tag">Group ${w.group}</span></td>
                     <td><span class="pos-badge">${w.pos}</span></td>
-                    <td><span class="gloss-text">${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</span></td>
+                    <td>
+                      <span class="gloss-text">${w.vi_gloss || (w.definitions && w.definitions[0]) || ''}</span>
+                      ${w.mnemonic ? `
+                        <div class="table-mnemonic-subtext" title="Mẹo nhớ & Gốc từ">
+                          <span class="mnemonic-bullet">💡</span> <span>${w.mnemonic}</span>
+                        </div>
+                      ` : ''}
+                    </td>
                     <td><span class="mistake-count-badge">${rec.mistake_count || 1} lần</span></td>
                     <td style="text-align: right;">
                       <button class="action-chip-btn flag-btn flagged" data-id="${w.id}">
@@ -2253,6 +2267,17 @@ export function renderTcRationale({ question, isCorrect, chosenWord, onContinue,
         ${question.rationale}
       </div>
 
+      ${(question.targetWord && question.targetWord.mnemonic) || (question.options && question.options.find(o => o.isCorrect && o.mnemonic)?.mnemonic) ? `
+        <div class="rationale-mnemonic-box">
+          <div class="rationale-mnemonic-label">
+            <span>Mẹo nhớ từ "${question.correctWord}":</span>
+          </div>
+          <div class="rationale-mnemonic-text">
+            💡 ${(question.targetWord && question.targetWord.mnemonic) || question.options.find(o => o.isCorrect)?.mnemonic}
+          </div>
+        </div>
+      ` : ''}
+
       <div style="font-weight: 700; font-size: 13px; color: var(--text-title); margin-top: 10px; margin-bottom: 6px;">
         Tra cứu nghĩa 4 lựa chọn:
       </div>
@@ -2278,6 +2303,7 @@ export function renderTcRationale({ question, isCorrect, chosenWord, onContinue,
             </div>
             <span class="lookup-pos">${opt.pos}</span>
             <span class="lookup-vi">${opt.vi_gloss || ''}</span>
+            ${opt.mnemonic ? `<div class="lookup-mnemonic-mini">💡 ${opt.mnemonic}</div>` : ''}
             <span class="lookup-en">${opt.definition || ''}</span>
           </div>
         `;
@@ -2361,10 +2387,23 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
     `;
   }
 
+  const targetMnemonic = (question.targetWord && question.targetWord.mnemonic) || (question.options && question.options.find(o => o.isCorrect && o.mnemonic)?.mnemonic) || '';
+  const mnemonicBoxHtml = targetMnemonic ? `
+    <div class="rationale-mnemonic-box">
+      <div class="rationale-mnemonic-label">
+        <span>Mẹo nhớ từ "${displayAnswerWord}":</span>
+      </div>
+      <div class="rationale-mnemonic-text">
+        💡 ${targetMnemonic}
+      </div>
+    </div>
+  ` : '';
+
   let optionsLookupHtml = '';
   if (Array.isArray(question.options) && question.options.length > 0) {
     // Hiển thị đầy đủ cả 4 lựa chọn từ + nghĩa cho cả FLASH và REVERSE_FLASH
     optionsLookupHtml = `
+      ${mnemonicBoxHtml}
       <div style="font-weight: 700; font-size: 13px; color: var(--text-title); margin-top: 10px; margin-bottom: 6px;">
         Tra cứu nghĩa 4 lựa chọn:
       </div>
@@ -2390,6 +2429,7 @@ export function renderFlashFeedback({ question, isCorrect = false, chosenWord = 
             </div>
             <span class="lookup-pos">${opt.pos || ''}</span>
             <span class="lookup-vi">${opt.vi_gloss || ''}</span>
+            ${opt.mnemonic ? `<div class="lookup-mnemonic-mini">💡 ${opt.mnemonic}</div>` : ''}
             <span class="lookup-en">${opt.definition || ''}</span>
           </div>
         `;
@@ -2823,6 +2863,18 @@ export function renderNewWordPreviewScreen({
             </div>
             <div class="flashcard-vi-text">${word.vi_gloss}</div>
           </div>
+
+          ${word.mnemonic ? `
+            <div class="flashcard-section flashcard-mnemonic-section">
+              <div class="flashcard-section-label">
+                <span>Mẹo nhớ & Gốc từ</span>
+                <span class="mnemonic-badge-tag">Gợi ý phản xạ</span>
+              </div>
+              <div class="flashcard-mnemonic-text">
+                <span class="mnemonic-icon-prefix">💡</span> ${word.mnemonic}
+              </div>
+            </div>
+          ` : ''}
 
           ${definitionsHtml}
           ${exampleHtml}

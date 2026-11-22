@@ -270,6 +270,7 @@ export class SessionManager {
         isCorrect: true,
         pos: targetWord.pos,
         vi_gloss: targetWord.vi_gloss || '',
+        mnemonic: targetWord.mnemonic || '',
         definition: (targetWord.definitions && targetWord.definitions[0]) || targetWord.definition || '',
       },
       ...distractors.map((d) => ({
@@ -279,6 +280,7 @@ export class SessionManager {
         isCorrect: false,
         pos: d.pos,
         vi_gloss: d.vi_gloss || '',
+        mnemonic: d.mnemonic || '',
         definition: (d.definitions && d.definitions[0]) || d.definition || '',
       })),
     ];
@@ -313,6 +315,7 @@ export class SessionManager {
         isCorrect: true,
         pos: targetWord.pos,
         vi_gloss: targetWord.vi_gloss || '',
+        mnemonic: targetWord.mnemonic || '',
         definition: (targetWord.definitions && targetWord.definitions[0]) || '',
       },
       ...distractors.map((d) => ({
@@ -322,6 +325,7 @@ export class SessionManager {
         isCorrect: false,
         pos: d.pos,
         vi_gloss: d.vi_gloss || '',
+        mnemonic: d.mnemonic || '',
         definition: (d.definitions && d.definitions[0]) || '',
       })),
     ];
@@ -386,6 +390,7 @@ export class SessionManager {
         ...opt,
         pos: vocabEntry ? vocabEntry.pos : tpl.pos_required || '',
         vi_gloss: vocabEntry ? vocabEntry.vi_gloss : '',
+        mnemonic: vocabEntry ? (vocabEntry.mnemonic || '') : '',
         definition: vocabEntry && vocabEntry.definitions ? vocabEntry.definitions[0] : '',
       };
     });
